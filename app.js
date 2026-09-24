@@ -1,23 +1,41 @@
 // 命紋診断（β版）。生年月日から「性格の特徴・あなたに合う環境・苦手になりやすいこと」と、これから12か月のアドバイスを出す。
 // 実行時にAIは呼ばない。暦は engine.js、読みの選び方は method.js、文言は rules.js の表から選ぶだけ。
-// 入力は端末の外へ送らない（sessionStorage のみ。タブを閉じると消える）。シェアには生年月日や呼び名を入れない。
-import * as E from "./engine.js?v=1.2.0";
-import * as R from "./rules.js?v=1.2.0";
-import * as M from "./method.js?v=1.2.0";
-import { refreshReadingCopy } from "./presentation.js?v=1.2.0";
+// 入力は端末の外へ送らない（ブラウザーに保存。設定から削除できる）。シェアには生年月日や呼び名を入れない。
+import * as E from "./engine.js?v=1.3.0";
+import * as R from "./rules.js?v=1.3.0";
+import * as M from "./method.js?v=1.3.0";
+import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.3.0";
 
-const APP_VERSION = "app-1.2-beta";
+import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.3.0";
 
-// ── 状態（版が変わったら古い保存内容は使わない） ──
-const blank = () => ({ focus: null, draft: {}, input: null, reading: null, reflections: {}, fits: {}, feeling: null, gridView: false, fresh: false });
-let S = load();
+const APP_VERSION = "app-1.3-beta";
+
+// ── 同じブラウザーに出生情報と診断結果を保存する ──
+const blank = () => ({ focus: null, draft: {}, input: null, reading: null, readings: {}, gridView: false, fresh: false });
+const birthKey = (i) => i ? JSON.stringify([i.y, i.m, i.d, i.country, i.country === "other" ? i.offset : null,
+  i.timeMode, i.timeMode === "exact" ? i.time : null, i.timeMode === "range" ? [i.from, i.to, Boolean(i.toNextDay)] : null]) : null;
+const birthDraft = (i) => i ? { ...i, by: String(i.y), bm: String(i.m), bd: String(i.d), offset: i.offset ?? "" } : {};
 function load() {
-  try {
-    const s = JSON.parse(sessionStorage.getItem("meimon") || "{}");
-    return [APP_VERSION, "app-1.1-beta", "app-1.0-beta"].includes(s.v) ? { ...blank(), ...s } : blank();
-  } catch { return blank(); }
+  const saved = loadState();
+  if (!saved) return blank();
+  const state = { ...blank(), ...saved, draft: birthDraft(saved.input) };
+  state.readings = Object.fromEntries(Object.entries(state.readings).map(([key, value]) => [key, refreshReadingCopy(value)]));
+  state.reading = refreshReadingCopy(state.reading);
+  if (state.reading) state.readings[state.reading.focus] = state.reading;
+  return state;
 }
-function save() { try { sessionStorage.setItem("meimon", JSON.stringify({ ...S, v: APP_VERSION })); } catch { /* 保存できなくても画面は動く */ } }
+let S = load();
+let persistent = true;
+function save() {
+  const result = saveState(S);
+  if (result.conflict) {
+    S = load(); chartCache = null; persistent = true;
+    queueMicrotask(() => { render(); toast("別のタブで保存情報が変更されました。最新の状態を表示します。"); });
+    return false;
+  }
+  persistent = result.persistent;
+  return true;
+}
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const nick = () => esc(S.input?.nick || "あなた");
@@ -66,8 +84,8 @@ function sHome() {
     <p class="concern-intro">仕事 ／ 恋愛 ／ 人間関係 ／ お金 ／ 自分自身</p>
     <ul class="promise" aria-label="この診断の特徴"><li>無料</li><li>登録なし</li><li>質問は2つ</li><li>入力は端末の中だけで計算</li></ul>
     <div class="actions" style="margin-top:28px">
-      <a class="btn" href="#/focus">無料で診断する</a>
-      ${S.reading ? `<a class="btn secondary" href="#/r">さっきの結果を見る</a>` : ""}
+      <a class="btn" href="#/focus">${S.input ? "保存した生年月日で診断する" : "無料で診断する"}</a>
+      ${S.reading ? `<a class="btn secondary" href="#/r">保存した結果を見る</a>` : ""}
       <a class="textlink" href="#/sample">結果の見本を見る →</a>
     </div>
   </section>
@@ -116,13 +134,14 @@ function sSample() {
 function sFocus() {
   const categories = ["仕事", "恋愛・パートナー", "家族・人間関係", "お金・暮らし", "自分自身"];
   return {
-    bar: bar("flow", { label: "質問 1 / 2" }),
+    bar: bar("flow", { label: S.input ? "診断を選ぶ" : "質問 1 / 2" }),
     html: `<form class="stack form-narrow" data-form="focus" novalidate>
   <h1 class="h1" tabindex="-1">いま、どんなことを考えたいですか？</h1>
   <p>一つ選んでください。性格を占い、選んだ悩みについてのアドバイスと、12か月の過ごし方をお伝えします。</p>
+  ${S.input ? `<p class="quiet">保存した生年月日：${S.input.y}年${S.input.m}月${S.input.d}日<br><a href="#/birth">生年月日を変更する</a></p>` : ""}
   <div class="concern-groups" id="f-focus">${categories.map((category) => `<fieldset class="concern-group"><legend>${esc(category)}</legend><div class="choices">${Object.entries(R.FOCUS).filter(([, f]) => f.category === category).map(([k, f]) => radio("focus", k, f.label, S.focus)).join("")}</div></fieldset>`).join("")}</div>
   <p class="error" id="e-focus" hidden>考えたいことに近いものを一つ選んでください。</p>
-  <button class="btn" type="submit">次へ</button>
+  <button class="btn" type="submit">${S.input ? "診断結果を見る" : "次へ"}</button>
 </form>`,
   };
 }
@@ -134,7 +153,7 @@ function sBirth() {
   const d = { country: "JP", timeMode: "", ...S.draft };
   const v = (k) => esc(d[k] ?? "");
   return {
-    bar: bar("flow", { label: "質問 2 / 2" }),
+    bar: bar("flow", { label: S.input ? "生年月日の変更" : "質問 2 / 2" }),
     html: `<form class="stack form-narrow" data-form="birth" novalidate>
   <h1 class="h1" tabindex="-1">生まれたときの情報を教えてください</h1>
   <div class="errsummary" id="errsum" tabindex="-1" hidden></div>
@@ -180,7 +199,7 @@ function sBirth() {
 
   <p class="status note" id="calcstatus" role="status" aria-live="polite"></p>
   <button class="btn" type="submit">診断する</button>
-  <p class="note">入力は、この端末の中だけで計算します。どこにも送りません。<a href="#/how">入力情報の扱い</a></p>
+  <p class="note">生年月日と結果はこのブラウザーに保存します。次回は入力し直さずに使えます。設定から削除できます。<a href="#/how">入力情報の扱い</a></p>
 </form>`,
   };
 }
@@ -266,7 +285,6 @@ function buildReading() {
     focus, consult: R.FOCUS[focus].label, summary: ess.summary, uniq, starLine: starLine(c),
     candidates: c.candidates.map((k) => ["year", "month", "day", "hour"].map((q) => k[q]?.label ?? "―").join("・")),
   };
-  S.reflections = {}; S.fits = {}; S.feeling = null;
   if (dayStems(c).length > 1) { S.reading = { ...base, split: "day" }; return; }
   const ds = c.candidates[0].day.stem;
   const natal = new Set(c.candidates.flatMap((k) => Object.values(E.starsOf(k)).filter(Boolean)));
@@ -275,7 +293,7 @@ function buildReading() {
     const star = E.TEN_GODS[x.after.god], bstar = E.TEN_GODS[x.before.god], ystar = E.TEN_GODS[x.after.yearGod];
     const g = R.focusGroup(star, focus), bg = R.focusGroup(bstar, focus), yg = R.focusGroup(ystar, focus);
     return { key: ymKey(x.y, x.m), y: x.y, m: x.m, last: new Date(x.y, x.m, 0).getDate(), boundary: x.boundary,
-      star, theme: g.theme, description: g.description, action: g.action, pillar: x.after.month.label, same: natal.has(star),
+      star, theme: g.theme, conclusion: g.conclusion, description: g.description, example: g.example, action: g.action, pillar: x.after.month.label, same: natal.has(star),
       before: { star: bstar, theme: bg.theme, pillar: x.before.month.label },
       year: { star: ystar, theme: yg.theme, pillar: x.after.year.label } };
   });
@@ -294,6 +312,28 @@ function buildReading() {
   };
 }
 
+// 同じ出生情報で悩みを切り替える。過去の結果は、期間を過ぎたときだけ更新する。
+function selectFocus(focus) {
+  if (!R.FOCUS[focus] || !S.input) return false;
+  const previous = { focus: S.focus, reading: S.reading };
+  S.focus = focus;
+  try {
+    const cached = S.readings[focus];
+    if (cached && (cached.split === "day" || periodState(cached) === "in")) S.reading = refreshReadingCopy(cached);
+    else buildReading();
+    S.readings[focus] = S.reading;
+    return save();
+  } catch {
+    S.focus = previous.focus; S.reading = previous.reading;
+    toast("結果を表示できませんでした。生年月日を確認してください。");
+    return false;
+  }
+}
+function topicSwitcher() {
+  const category = R.FOCUS[S.reading.focus]?.category;
+  return `<nav class="topics" aria-label="診断の種類">${[["fit","仕事"],["love","恋愛"],["relations","人間関係"],["money","お金"],["self","自分"]].map(([key,label]) => `<button type="button" data-act="topic" data-focus="${key}" aria-pressed="${R.FOCUS[key].category === category}">${label}</button>`).join("")}</nav><p class="topic-note note">同じ生年月日で切り替えられます。<a href="#/focus">詳しく選ぶ</a></p>`;
+}
+
 // ═════════ 結果 ═════════
 function periodState(r = S.reading) {
   const t = today(), now = ymKey(t.y, t.m);
@@ -301,6 +341,7 @@ function periodState(r = S.reading) {
   return now < s ? "before" : now > e ? "after" : "in";
 }
 function monthState(mm) { const t = today(), now = ymKey(t.y, t.m); return mm.key < now ? "past" : mm.key === now ? "now" : "future"; }
+const monthConclusion = (m) => (m.conclusion || m.theme).replace(/^今月は、/, monthState(m) === "now" ? "今月は、" : `${m.m}月は、`);
 const monthName = (mm, full) => (full || mm.m === 1 ? `${mm.y}年${mm.m}月` : `${mm.m}月`);
 function currentMonth(r) { return periodState(r) === "in" ? r.months.find((mm) => monthState(mm) === "now") : r.months[0]; }
 function yearsText(r) {
@@ -333,14 +374,14 @@ function shareBlock(r) {
 function sResult() {
   const r = S.reading; if (!r) return needReading();
   if (r.split === "day") return { bar: bar("plain"), html: `<div class="stack"><h1 class="h1" tabindex="-1">生まれた日を一つに絞れませんでした</h1><p>入力した時刻が日付をまたぐため、性格の結果が複数あります。12か月の結果は、生まれた日が決まってから表示します。</p>${candidatesHtml(r)}<a class="btn" href="#/birth">入力を確認する</a></div>` };
-  const s = r.summary, cur = currentMonth(r);
+  const s = r.summary, cur = monthAdvice(currentMonth(r), r.focus);
   S.fresh = false;
   return { bar: bar("result"), nav: "sum", html: `<div class="stack">
     <section class="cover stack-s"><img class="owl" src="assets/owl-96.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の診断結果</p><h1 class="display cover-title" tabindex="-1">${s ? s.move : "性格の結果が複数あります"}</h1><p class="note">${r.period.label}・β版</p></section>
     ${s ? `<section class="card stack-s"><h2 class="h2">あなたはこんな人</h2>${threeLines(s)}<a class="textlink" href="#/r/essence">性格をもっと詳しく見る</a></section>` : candidatesHtml(r)}
     <section class="section stack-s"><p class="eyebrow">${esc(r.consult)}</p><h2 class="h2">${r.headline}</h2><p class="prose">${r.answer}</p></section>
-    <section class="card stack-s"><p class="eyebrow">${monthName(cur,true)}のアドバイス</p><h2 class="h2">${cur.theme}</h2><p>${cur.description || ''}</p><p><strong>おすすめの過ごし方</strong><br>${cur.action}</p><a class="textlink" href="#/r/now">今月の結果を詳しく見る</a></section>
-    <section class="section stack-s"><h2 class="h2">これから12か月</h2><ol class="cal">${calList(r,r.months.slice(r.months.indexOf(cur),r.months.indexOf(cur)+3))}</ol><a class="btn secondary" href="#/r/year">12か月すべて見る</a></section>
+    <section class="card stack-s"><p class="eyebrow">${monthName(cur,true)}のアドバイス</p><h2 class="h2">${monthConclusion(cur)}</h2><p>${cur.description || ''}</p><p class="note">${cur.isBefore ? `${cur.m}月1日〜${cur.boundary.day}日${cur.boundary.hour}時ごろ` : `${cur.m}月${cur.boundary.day}日${cur.boundary.hour}時ごろ〜月末`}の読み（日本時間）</p><a class="textlink" href="#/r/now">今月の結果を詳しく見る</a></section>
+    <section class="section stack-s"><h2 class="h2">これから12か月</h2><ol class="cal">${calList(r,r.months.slice(r.months.findIndex(m => m.key === cur.key),r.months.findIndex(m => m.key === cur.key)+3))}</ol><a class="btn secondary" href="#/r/year">12か月すべて見る</a></section>
     ${s ? shareBlock(r) : ''}
     <div class="linkrow"><a class="textlink" href="#/focus">別の悩みで診断する</a><a class="textlink" href="#/r/settings">結果をPDFで保存する</a></div>
     <details class="why"><summary>占いの方法と注意点</summary><p>${r.reason || '出生時刻によって結果が変わるため、複数の結果を表示しています。'}</p><p>${R.LIMITED}</p></details>
@@ -361,9 +402,10 @@ function sEssence() {
 
 function calList(r, list = r.months) {
   return list.map((mm) => {
+    mm = monthAdvice(mm, r.focus);
     const st = monthState(mm);
     const tag = st === "now" ? "今月" : st === "past" ? "過去" : "";
-    return `<li class="${st}"><a class="cal-row" href="#/r/m/${mm.key}" ${st === "now" ? 'aria-current="date"' : ""}><span class="mon">${mm.m}月<small>${mm.y}年</small></span><span class="theme">${mm.theme}</span>${tag ? `<span class="tag">${tag}</span>` : "<span></span>"}<span class="act">${mm.action}</span></a></li>`;
+    return `<li class="${st}"><a class="cal-row" href="#/r/m/${mm.key}" ${st === "now" ? 'aria-current="date"' : ""}><span class="mon">${mm.m}月<small>${mm.y}年</small></span><span class="theme">${monthConclusion(mm)}</span>${tag ? `<span class="tag">${tag}</span>` : "<span></span>"}<span class="act">${mm.action}</span></a></li>`;
   }).join("");
 }
 function sYear() {
@@ -386,12 +428,14 @@ function sMonth(key) {
   const stop=needReading(); if(stop)return stop;
   const r=S.reading, i=r.months.findIndex(m=>m.key===key);
   if(i<0)return redirect('#/r/year');
-  const m=r.months[i], f=R.FOCUS[r.focus], previous=r.months[i-1], next=r.months[i+1];
+  const original=r.months[i], m=monthAdvice(original,r.focus), f=R.FOCUS[r.focus], previous=r.months[i-1], next=r.months[i+1];
   return {bar:bar('result'),nav:'year',html:`<div class="stack"><p class="eyebrow">${monthName(m,true)}${monthState(m)==='past'?'（過去の月）':''}</p>
-    <h1 class="h1" tabindex="-1">${m.theme}</h1><p class="prose">${m.description || ''}</p>
-    <section class="card stack-s"><h2 class="h2">おすすめの過ごし方</h2><p>${m.action}</p></section>
-    <section class="stack-s"><h2 class="h2">${esc(f.category)}の悩みについて</h2><p>${f.link(m.theme)}</p></section>
-    <details class="why"><summary>月の切り替わりと占いの理由</summary><p>この占いでは、月の結果は毎月1日ではなく、季節の区切りの日に変わります。</p><p>${m.m}月${m.boundary.day}日${m.boundary.hour}時ごろまでは「${m.before.theme}」、それ以降は「${m.theme}」です（日本時間）。</p><p>生まれた日と、この月の干支の組み合わせから読んでいます。出来事の予測ではなく、占いからのアドバイスです。</p></details>
+    <p class="note">${esc(f.category)}の${monthState(m) === "now" ? "今月" : "この月"}の結論</p>
+    <p class="note">${m.isBefore ? `${m.m}月1日〜${m.boundary.day}日${m.boundary.hour}時ごろ` : `${m.m}月${m.boundary.day}日${m.boundary.hour}時ごろ〜月末`}の読み（日本時間）</p>
+    <h1 class="h1" tabindex="-1">${monthConclusion(m)}</h1>
+    <section class="stack-s"><h2 class="h2">この月の読み方</h2><p class="prose">${m.description}</p></section>
+    <section class="card stack-s"><h2 class="h2">たとえば、こんな場面で</h2><p>${m.example}</p></section>
+    <details class="why"><summary>月の切り替わりと占いの理由</summary><p>この占いでは、月の結果は毎月1日ではなく、季節の区切りの日に変わります。</p><p>${m.m}月${m.boundary.day}日${m.boundary.hour}時ごろまでは「${m.before.theme}」、それ以降は「${original.theme}」です（日本時間）。</p><p>生まれた日と、この月の干支の組み合わせから読んでいます。出来事の予測ではなく、占いからのアドバイスです。</p></details>
     <nav class="pager" aria-label="前後の月">${previous?`<a href="#/r/m/${previous.key}">← ${monthName(previous)}</a>`:'<span></span>'}${next?`<a href="#/r/m/${next.key}">${monthName(next)} →</a>`:'<span></span>'}</nav><a class="textlink" href="#/r/year">12か月の一覧に戻る</a></div>`};
 }
 function sNow() {
@@ -427,7 +471,7 @@ function sSettings() {
     </dl>
     <p class="note">節入りの時刻は計算値です。国立天文台の2026年の値と比べた差は最大14分で、境目の前後30分に生まれた場合は候補を並べます。</p></section>
   <section class="card stack-s" aria-labelledby="del"><h2 class="h2" id="del">入力と結果の削除</h2>
-    <p>生年月日と診断結果を、この端末のブラウザーから削除します。タブを閉じても消えます。</p>
+    <p>生年月日と、すべての悩みの診断結果をこのブラウザーから削除します。通常はタブを閉じても残ります。別の端末やブラウザーとは共有されません。</p>
     <div id="delconfirm" class="errsummary stack-s" hidden><p>削除すると元に戻せません。削除しますか。</p><button class="btn" type="button" data-act="delete">削除する</button><button class="btn secondary" type="button" data-act="delcancel">やめる</button></div>
     <button class="btn secondary" type="button" data-act="delask" id="delbtn">すべて削除する</button></section>
 </div>`,
@@ -440,9 +484,9 @@ function printReadingHtml(state, withBirth) {
   const three = (s) => `<dl class="three"><div><dt>性格の特徴</dt><dd>${esc(s.move)}</dd></div><div><dt>あなたに合う環境</dt><dd>${esc(s.env)}</dd></div><div><dt>苦手になりやすいこと</dt><dd>${esc(s.burden)}</dd></div></dl>`;
   const item = (x) => `<section class="print-block"><h3>${esc(x.id)}：${esc(x.move)}</h3>${three(x)}${x.detail ? `<p>${esc(x.detail)}</p>` : ""}</section>`;
   const sections = (title, xs) => xs?.length ? `<section><h2>${title}</h2>${xs.map(item).join("")}</section>` : "";
-  const months = (r.months || []).map((m) => `<section class="print-block"><h3>${esc(m.y)}年${esc(m.m)}月：${esc(m.theme)}</h3>
+  const months = (r.months || []).map((m) => `<section class="print-block"><h3>${esc(m.y)}年${esc(m.m)}月：${esc(monthConclusion(m))}</h3>
     <p>1日〜${esc(m.boundary.day)}日${esc(m.boundary.hour)}時ごろ：「${esc(m.before.theme)}」<br>${esc(m.boundary.day)}日${esc(m.boundary.hour)}時ごろ〜${esc(m.last)}日：「${esc(m.theme)}」（日本時間）</p>
-    <p>${esc(m.description || "")}</p><p>おすすめの過ごし方：${esc(m.action)}</p><p>1年を通して大切にしたいこと：${esc(m.year.theme)}</p></section>`).join("");
+    <p>${esc(m.description || "")}</p><p>たとえば：${esc(m.example || m.action)}</p><p>1年を通して大切にしたいこと：${esc(m.year.theme)}</p></section>`).join("");
   const birth = withBirth && input ? `<section class="print-block"><h2>入力情報</h2>
     ${input.nick ? `<p>呼び名：${esc(input.nick)}</p>` : ""}<p>生年月日：${esc(input.y)}年${esc(input.m)}月${esc(input.d)}日<br>出生地：${placeText(input)}<br>時刻：${esc(timeText(input))}</p>
     <p>命式（年・月・日・時）：${(r.candidates || []).map(esc).join("／")}</p></section>` : "";
@@ -476,7 +520,7 @@ function sHow() {
     <p>${kind("hint")}　読みと相談をもとにした、小さな行動の提案です。出来事の予測ではありません。</p></section>
   <section class="stack-s"><h2 class="h2">約束しないこと</h2><p>転職の成功、収入の増加、出来事の的中は約束しません。わからない項目は、悪い運勢ではなく入力不足として説明します。</p><p class="note">${R.LIMITED}</p></section>
   <section class="stack-s" id="data"><h2 class="h2">入力情報の扱い</h2>
-    <p>生年月日などの入力は、このページの中（あなたの端末のブラウザー）だけで計算します。どこにも送らず、このタブを閉じると消えます。</p>
+    <p>生年月日などの入力は、このページの中（あなたの端末のブラウザー）だけで計算します。外部へ送信せず、このブラウザーに保存します。通常はタブを閉じても残り、次回は入力し直さずに診断できます。設定の「すべて削除する」で消せます。ブラウザーのデータを消した場合やプライベートモードでは残らないことがあります。別の端末やブラウザーとは共有されません。</p>
     <p>結果をシェアするときも、送られるのは命紋の読みと、この診断へのリンクだけです。生年月日や呼び名は含みません。</p>
     <p class="note">文字の表示のために、Google Fonts から書体を読み込みます。アクセス解析のための計測は入れていません。</p></section>
   <section class="stack-s"><h2 class="h2">対象</h2><p>18歳以上の方を対象にしています。スマホ・パソコンのブラウザーで、登録せずに使えます。</p></section>
@@ -596,7 +640,8 @@ function render() {
   const mo = path.match(/^r\/m\/(\d{4}-\d{2})$/), ty = path.match(/^t\/([CT]\d{2})$/);
   const view = mo ? sMonth(mo[1]) : ty ? sType(ty[1]) : (ROUTES[path] || sHome)();
   topbar.innerHTML = view.bar;
-  main.innerHTML = view.html;
+  const showTopics = S.input && S.reading && (path === "r" || path === "r/year" || path === "r/now" || path === "r/essence" || mo);
+  main.innerHTML = (showTopics ? topicSwitcher() : "") + (S.input && !persistent ? `<p class="quiet storage-warning" role="status">このブラウザーでは保存できませんでした。タブを閉じると、生年月日の再入力が必要になることがあります。</p>` : "") + view.html;
   const showNav = "nav" in view && S.reading && S.reading.split !== "day";
   document.body.classList.toggle("has-resultnav", Boolean(showNav));
   resultnav.innerHTML = showNav ? [["sum", "#/r", "結果"], ["ess", "#/r/essence", "性格"], ["year", "#/r/year", "12か月"], ["now", "#/r/now", "今月"]]
@@ -622,7 +667,7 @@ function bindDynamic() {
     const [y, mo, d] = e.target.value.split("-");
     if (y) { main.querySelector("#by").value = Number(y); main.querySelector("#bm").value = Number(mo); main.querySelector("#bd").value = Number(d); }
   });
-  on("form[data-form=birth]", "input", (e) => { S.draft = readBirth(e.currentTarget); save(); });
+  on("form[data-form=birth]", "input", (e) => { S.draft = readBirth(e.currentTarget); });
 }
 
 function showErrors(errs) {
@@ -652,27 +697,35 @@ document.addEventListener("submit", (e) => {
   if (kindOf === "focus") {
     const v = new FormData(form).get("focus");
     if (!v) { main.querySelector("#e-focus").hidden = false; main.querySelector("#f-focus input")?.focus(); return; }
-    S.focus = v; save(); location.hash = "#/birth";
+    if (S.input) { if (selectFocus(v)) location.hash = "#/r"; }
+    else { S.focus = v; location.hash = "#/birth"; }
   }
   if (kindOf === "birth") {
     const d = readBirth(form);
     const errs = validateBirth(d);
     if (errs.some((x) => x[3])) { // 対象外：生年月日を保持しない
-      S.draft = { ...d, by: "", bm: "", bd: "" }; S.input = null; save();
+      S.draft = { ...d, by: "", bm: "", bd: "" };
       ["by", "bm", "bd"].forEach((id) => { main.querySelector(`#${id}`).value = ""; });
       showErrors(errs);
       main.querySelector("#e-date").insertAdjacentHTML("beforeend", ` <a href="#/sample">結果の見本を見る</a>`);
       return;
     }
-    if (errs.length) { S.draft = d; save(); showErrors(errs); return; }
+    if (errs.length) { S.draft = d; showErrors(errs); return; }
     S.draft = d;
+    const previous = { input: S.input, reading: S.reading, readings: S.readings };
     S.input = { nick: (d.nick || "").trim(), y: Number(d.by), m: Number(d.bm), d: Number(d.bd), country: d.country || "JP", offset: d.country === "other" ? Number(d.offset) : null,
       city: (d.city || "").trim(), timeMode: d.timeMode, time: d.time, from: d.from, to: d.to, toNextDay: d.toNextDay };
     const status = main.querySelector("#calcstatus");
     status.textContent = "生まれた日の干支を計算しています";
-    try { buildReading(); }
-    catch { status.textContent = "計算できませんでした。入力を確かめて、もう一度お試しください。入力は残っています。"; return; }
-    S.fresh = true; save(); location.hash = "#/r";
+    const unchanged = birthKey(previous.input) === birthKey(S.input);
+    try {
+      if (unchanged && previous.reading && (previous.reading.split === "day" || periodState(previous.reading) === "in")) S.reading = previous.reading;
+      else buildReading();
+    }
+    catch { S.input = previous.input; S.reading = previous.reading; S.readings = previous.readings; chartCache = null; status.textContent = "計算できませんでした。入力を確かめて、もう一度お試しください。入力は残っています。"; return; }
+    S.readings = unchanged ? previous.readings : {};
+    S.readings[S.reading.focus] = S.reading;
+    S.fresh = true; if (save()) location.hash = "#/r";
   }
 
 });
@@ -686,6 +739,12 @@ document.addEventListener("click", async (e) => {
   if (!a) return;
   const act = a.dataset.act;
   if (act === "back") { if (history.length > 1) history.back(); else location.hash = "#/"; }
+  if (act === "topic") {
+    if (selectFocus(a.dataset.focus)) {
+      if (/^#\/r(?:\/(?:now|year|m\/\d{4}-\d{2}))?$/.test(location.hash)) render();
+      else location.hash = "#/r";
+    }
+  }
   if (act === "grid") { S.gridView = !S.gridView; save(); render(); }
   if (act === "card") shareCard();
   if (act === "share") {
@@ -710,7 +769,11 @@ document.addEventListener("click", async (e) => {
   }
   if (act === "delask") { main.querySelector("#delconfirm").hidden = false; a.hidden = true; main.querySelector("#delconfirm button").focus(); }
   if (act === "delcancel") { main.querySelector("#delconfirm").hidden = true; const b = main.querySelector("#delbtn"); b.hidden = false; b.focus(); }
-  if (act === "delete") { S = blank(); chartCache = null; try { sessionStorage.removeItem("meimon"); } catch { /* なし */ } location.hash = "#/"; toast("削除しました"); }
+  if (act === "delete") {
+    const result = clearState();
+    if (!result.cleared) { toast("保存情報を削除できませんでした。ブラウザーの設定から、このサイトのデータを削除してください。"); return; }
+    S = blank(); chartCache = null; persistent = true; location.hash = "#/"; toast("削除しました");
+  }
 });
 
 // ── 夜空：決めた乱数で星を置く（毎回同じ空）。瞬く星は少数だけCSSで動かす ──
@@ -741,5 +804,10 @@ window.addEventListener("resize", () => { clearTimeout(skyTimer); skyTimer = set
 drawSky();
 
 window.addEventListener("hashchange", render);
-if (S.reading) { S.reading = refreshReadingCopy(S.reading); save(); }
+window.addEventListener("storage", (event) => {
+  if (event.key !== STORAGE_KEY && event.key !== null) return;
+  S = load(); chartCache = null; persistent = true;
+  render();
+});
+if (S.input) save();
 render();

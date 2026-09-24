@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
-import {refreshReadingCopy} from '../presentation.js';
+import {refreshReadingCopy,monthAdvice} from '../presentation.js';
 const r={createdAt:'2026-08-01T00:00:00.000Z',versions:{rules:'old',calc:'calc-0.2'},focus:'fit',period:{label:'2026年8月〜2027年7月'},summary:{source:'T06',move:'OLD',env:'OLD',burden:'OLD',stars:['正財']},uniq:[],basics:[{id:'T06',star:'正財',move:'OLD'}],combos:[],conditional:[],candidates:['保存した命式'],yearTheme:'OLD',years:[{star:'正官',theme:'OLD',pillar:'丙午'}],months:[{key:'2026-08',star:'正財',theme:'OLD',pillar:'保存した月柱',boundary:{day:7,hour:21},before:{star:'正官',theme:'OLD'},year:{star:'正官',theme:'OLD'}}]};
 const before=JSON.stringify(r);const changed=refreshReadingCopy(r);
 assert.equal(JSON.stringify(r),before,'元の結果を破壊しない');
 assert.deepEqual(changed.period,r.period);assert.equal(changed.createdAt,r.createdAt);assert.deepEqual(changed.candidates,r.candidates);
 assert.equal(changed.summary.source,'T06');assert.equal(changed.months[0].pillar,r.months[0].pillar);assert.deepEqual(changed.months[0].boundary,r.months[0].boundary);
-assert.ok(!JSON.stringify(changed).includes('OLD'));assert.ok(changed.months[0].description);
+assert.ok(!JSON.stringify(changed).includes('OLD'));assert.ok(changed.months[0].description);assert.ok(changed.months[0].conclusion);assert.ok(changed.months[0].example);
 assert.equal(refreshReadingCopy(changed),changed,'同じ版は再更新しない');
 const split=refreshReadingCopy({versions:{},focus:'love',split:'day',uniq:[{source:'T06',move:'OLD'}],summary:null});assert.equal(split.split,'day');assert.equal(split.months,undefined);assert.notEqual(split.uniq[0].move,'OLD');
 console.log(JSON.stringify({result:'ok',checks:'copy migration keeps calculation, dates, IDs and split results'}));
+
+const month={y:2026,m:10,theme:'気持ちを伝える',conclusion:'after',description:'after',example:'after',action:'after',boundary:{day:8,hour:15,minute:29},star:'食神',before:{star:'比肩'}};
+const beforeBoundary=monthAdvice(month,'love',Date.parse('2026-10-08T15:28:59+09:00'));
+assert.equal(beforeBoundary.isBefore,true);assert.equal(beforeBoundary.theme,'自分の時間も大切に');assert.ok(beforeBoundary.conclusion.includes('自分の時間'));
+assert.equal(monthAdvice(month,'love',Date.parse('2026-10-08T15:29:00+09:00')).isBefore,false);
+assert.equal(monthAdvice(month,'love',Date.parse('2026-09-24T12:00:00+09:00')).isBefore,false,'future month uses its main interval');
+assert.equal(monthAdvice(month,'love',Date.parse('2026-11-01T00:00:00+09:00')).isBefore,false);
+assert.equal(month.conclusion,'after','saved reading stays unchanged');
+console.log('ok monthly advice follows the Japan-time boundary without changing saved results');

@@ -1,5 +1,5 @@
 // 命紋の読みの選び方（研究仕様0.2の固定手順）。文章は生成せず、rules.js の表から選ぶだけ。
-import { BASICS, COMBOS } from "./rules.js?v=1.2.0";
+import { BASICS, COMBOS } from "./rules.js?v=1.3.0";
 
 const POSITIONS = ["month", "year", "hour"]; // 月干を第一候補、年干・時干を補助候補（命紋の仮置き）
 
