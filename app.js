@@ -1,18 +1,19 @@
+import { careerFor } from './careers.js?v=1.6.0';
 // ハリーの命紋診断。生年月日から「性格の特徴・あなたに合う環境・苦手になりやすいこと」と、これから3か月のアドバイスを出す。
 // 実行時にAIは呼ばない。暦は engine.js、読みの選び方は method.js、文言は rules.js の表から選ぶだけ。
 // 入力は端末の外へ送らない（ブラウザーに保存。設定から削除できる）。シェアには生年月日や呼び名を入れない。
-import * as E from "./engine.js?v=1.5.0";
-import * as R from "./rules.js?v=1.5.0";
-import * as M from "./method.js?v=1.5.0";
-import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.5.0";
+import * as E from "./engine.js?v=1.6.0";
+import * as R from "./rules.js?v=1.6.0";
+import * as M from "./method.js?v=1.6.0";
+import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.6.0";
 
-import { essenceFor } from "./essence.js?v=1.5.0";
-import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.5.0";
-import { lineUrl } from "./service.js?v=1.5.0";
+import { essenceFor } from "./essence.js?v=1.6.0";
+import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.6.0";
+import { lineUrl } from "./service.js?v=1.6.0";
 
-import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.5.0";
+import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.6.0";
 
-const APP_VERSION = "app-1.5";
+const APP_VERSION = "app-1.6";
 
 // ── 同じブラウザーに出生情報と診断結果を保存する ──
 const blank = () => ({ focus: null, draft: {}, input: null, reading: null, readings: {}, gridView: false, fresh: false });
@@ -85,7 +86,7 @@ function sHome() {
     <p class="eyebrow" style="margin-top:16px">ハリーの命紋診断</p>
     <h1 class="display" id="h" tabindex="-1">自分のことを、<br>少し深く知る。</h1>
     <p class="lead" style="margin-top:12px">人には見せない気持ち。つい繰り返す行動。あなたらしさと人生の流れを、生まれた日時から読み解きます。</p>
-    <p class="concern-intro">本質と性格 ／ 18歳からの流れ ／ これから3か月</p>
+    <p class="concern-intro">本質と性格 ／ 向いている仕事 ／ 運気の流れ</p>
     <ul class="promise" aria-label="この診断の特徴"><li>無料</li><li>登録なし</li><li>質問は2つ</li><li>入力は端末の中だけで計算</li></ul>
     <div class="actions" style="margin-top:28px">
       <a class="btn" href="#/focus">${S.input ? "保存した生年月日で診断する" : "無料で診断する"}</a>
@@ -97,7 +98,7 @@ function sHome() {
     <p class="eyebrow">この鑑定でわかること</p>
     <ol class="reading-chapters">
       <li><span>01</span><div><h2>本質と性格</h2><p>表に出る自分と、心の内側。人との関わり方や、力を発揮しやすい場面。</p></div></li>
-      <li><span>02</span><div><h2>18歳から、今まで</h2><p>年ごとのテーマを図でたどり、自分の歩みと照らし合わせる。</p></div></li>
+      <li><span>02</span><div><h2>18歳から、今まで</h2><p>動きやすい年、整える年。運気の波を図でたどる。</p></div></li>
       <li><span>03</span><div><h2>これから3か月</h2><p>仕事、恋愛、人間関係、お金。気になる悩みに合わせた過ごし方。</p></div></li>
     </ol>
     <p class="guide-sign">あなたを知る時間をご一緒に。<br><span>案内役 ハリー</span></p>
@@ -336,7 +337,7 @@ function selectFocus(focus) {
 }
 function topicSwitcher() {
   const category = R.FOCUS[S.reading.focus]?.category;
-  return `<nav class="topics" aria-label="診断の種類">${[["fit","仕事"],["love","恋愛"],["relations","人間関係"],["money","お金"],["self","自分"]].map(([key,label]) => `<button type="button" data-act="topic" data-focus="${key}" aria-pressed="${R.FOCUS[key].category === category}">${label}</button>`).join("")}</nav><p class="topic-note note">知りたいテーマをタップしてください。<a href="#/focus">悩みを詳しく選ぶ</a></p>`;
+  return `<details class="topic-picker"><summary>別の悩みも見てみる</summary><nav class="topics" aria-label="診断の種類">${[["fit","仕事"],["love","恋愛"],["relations","人間関係"],["money","お金"],["self","自分"]].map(([key,label]) => `<button type="button" data-act="topic" data-focus="${key}" aria-pressed="${R.FOCUS[key].category === category}">${label}</button>`).join("")}</nav><p class="topic-note note">知りたいテーマをタップしてください。<a href="#/focus">悩みを詳しく選ぶ</a></p></details>`;
 }
 
 // ═════════ 結果 ═════════
@@ -379,7 +380,18 @@ function shareBlock(r) {
 function essenceHtml(summary, options = {}) {
   const text = summary && essenceFor(summary.source || summary.id);
   if (!text) return "";
-  return `<div class="essence-reading"><p class="essence-intro">${esc(text.intro)}</p>${text.sections.map(part => `<section class="essence-section"><h2 class="h2">${esc(part.title)}</h2><p class="prose">${esc(part.text)}</p></section>`).join("")}</div>`;
+  const section=part=>`<section class="essence-section"><h2 class="h2">${esc(part.title)}</h2><p class="prose">${esc(part.text)}</p></section>`;
+  return `<div class="essence-reading"><p class="essence-intro">${esc(text.intro)}</p>${options.preview ? text.sections.slice(0,2).map(section).join('')+`<details class="essence-more"><summary>力を出せる場面と、親しい人に見せる素顔も読む</summary>${text.sections.slice(2).map(section).join('')}</details>` : text.sections.map(section).join('')}</div>`;
+}
+function careerHtml(summary) {
+  const c=summary && careerFor(summary.source || summary.id);
+  if(!c)return '';
+  return `<section class="career-reading stack"><h2 class="h2">${esc(c.title)}</h2><ul class="career-jobs">${c.jobs.map(job=>`<li>${esc(job)}</li>`).join('')}</ul><section class="stack-s"><h3>向いている理由</h3><p>${esc(c.reason)}</p></section><section class="stack-s"><h3>同じ職種でも、ここは確認して</h3><p>${esc(c.avoid)}では、持ち味を出しにくいかもしれません。</p><p>${esc(c.step)}</p></section><p class="note">本質の特徴から考えた職種の例です。必要な経験や資格、働く条件も合わせて選んでください。</p></section>`;
+}
+function sCareer() {
+  const stop=needReading();if(stop)return stop;
+  const r=S.reading;
+  return {bar:bar('result'),nav:'sum',html:`<div class="stack"><p class="eyebrow">あなたに向いている仕事</p><h1 class="h1" tabindex="-1">何をする仕事なら、力を出せる？</h1>${r.summary ? `<p>「${esc(r.summary.move)}」という持ち味を、仕事内容に置き換えると。</p>${careerHtml(r.summary)}` : `<p>生まれた時刻によって特徴が分かれるため、候補ごとに向いている仕事を紹介します。</p>${r.uniq.filter((candidate,i,list)=>list.findIndex(x=>(x.source || x.id)===(candidate.source || candidate.id))===i).map((candidate,i)=>`<section class="card stack-s"><p class="eyebrow">候補${i+1}：${esc(candidate.move)}</p>${careerHtml(candidate)}</section>`).join('')}`}<a class="btn" href="#/r/topic/fit">今の仕事の悩みと照らし合わせる</a></div>`};
 }
 function lineCard() {
   return `<section class="line-card stack-s"><p class="eyebrow">ハリーの詳しい鑑定</p><h2 class="h2">この先の流れを、<br>もっと詳しく。</h2><p>動き出す時期、人との関わり方、自分に合う選び方。気になるテーマを深く読む鑑定は、LINEでご案内します。</p><a class="btn secondary" href="#/line">詳しい鑑定について</a><p class="note">有料鑑定の内容と料金は、受付時にご案内します。</p></section>`;
@@ -389,14 +401,13 @@ function sResult() {
   if (r.split === "day") return {bar:bar("result"),nav:"sum",html:`<div class="stack"><h1 class="h1" tabindex="-1">あなたの本質には、複数の読みがあります</h1><p>生まれた時刻の範囲が日付をまたぐため、ひとつに絞れませんでした。候補ごとの特徴を読めます。</p>${candidatesHtml(r)}<a class="btn" href="#/birth">生まれた時刻を確認する</a></div>`};
   const summary=r.summary;
   return {bar:bar("result"),nav:"sum",html:`<div class="stack">
-    <section class="cover stack-s"><img class="harry" src="assets/harry.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の本質</p><h1 class="display cover-title" tabindex="-1">${summary ? esc(summary.move) : "いくつかの顔を持つ、あなたの本質"}</h1><p class="note">命紋独自の読み方で、内面と日常の姿をひもときます。</p></section>
-    <nav class="reading-index" aria-label="鑑定の読み順"><a href="#/r/essence">本質と性格</a><a href="#/r/history">18歳からの流れ</a><a href="#/r/future">これから3か月</a></nav>
-    ${summary ? essenceHtml(summary) : candidatesHtml(r)}
-    <section class="card stack-s"><h2 class="h2">あなたを支える条件</h2>${summary ? threeLines(summary,"",false) : '<p>生まれた時刻によって、合う環境の読みが分かれます。</p>'}<a class="textlink" href="#/r/essence">ほかの一面も読む</a></section>
-    <section class="section stack-s"><p class="eyebrow">これまでのあなた</p><h2 class="h2">18歳から今まで、どんな流れを歩んだ？</h2><p>人との関わりがテーマの年、自分の意思を大切にする年。年ごとの流れを図でたどり、その頃の自分と照らし合わせられます。</p><a class="btn secondary" href="#/r/history">これまでの流れを見る</a></section>
-    <section class="section stack-s"><h2 class="h2">悩みに合わせて、あなたを読む</h2>${topicSwitcher()}</section>
-    <a class="btn" href="#/r/future">これから3か月を読む</a>
-    ${lineCard()}${summary ? shareBlock(r) : ''}
+    <section class="cover stack-s"><img class="harry" src="assets/harry.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の本質</p><h1 class="display cover-title" tabindex="-1">${summary ? esc(summary.move) : "いくつかの顔を持つ、あなたの本質"}</h1><p class="note">性格から、仕事の選び方と運気の流れまで。</p></section>
+    ${summary ? essenceHtml(summary,{preview:true}) : candidatesHtml(r)}
+    <section class="answer-card stack-s"><p class="eyebrow">${esc(R.FOCUS[r.focus].short)}で気になっていることへ</p><h2 class="h2">${esc(r.headline)}</h2><p>${esc(r.answer)}</p><a class="textlink" href="#/r/topic/${r.focus}">自分に合う対処法を、もう少し詳しく →</a></section>
+    <section class="discover stack-s"><p class="eyebrow">ここから、知りたいことを</p><h2 class="h2">あなたの性格を、選び方につなげる。</h2><a class="discover-link" href="#/r/career"><strong>どんな仕事なら、無理なく力を出せる？</strong><span>${esc(careerFor(summary?.source)?.jobs.slice(0,2).join('・') || '向いている職種')}など、理由と職場の選び方まで →</span></a><a class="discover-link" href="#/r/history"><strong>頑張れた年と、立ち止まった年は？</strong><span>18歳から今までの、運気の波をたどる →</span></a><a class="discover-link" href="#/r/future"><strong>これから、いつ・どう動けばいい？</strong><span>あなたの悩みに合わせて、3か月の過ごし方を知る →</span></a></section>
+    ${topicSwitcher()}
+    ${summary ? `<details class="share-more"><summary>結果を保存・シェアする</summary>${shareBlock(r)}</details>` : ''}
+
   </div>`};
 }
 
@@ -420,7 +431,7 @@ function lifeFlow() {
 function sHistory() {
   const stop=needReading();if(stop)return stop;
   const flow=lifeFlow();
-  return {bar:bar("result"),nav:"history",html:`<div class="stack"><p class="eyebrow">18歳から、今まで</p><h1 class="h1" tabindex="-1">あなたの人生の流れ</h1><p>年ごとのテーマをたどると、当時大切にしていたことや、迷った理由を見つめ直せます。</p>${renderLifeFlow(flow,selectedLifeYear)}<div id="life-detail" tabindex="-1">${renderLifeYear(flow,selectedLifeYear)}</div><a class="btn" href="#/r/future">この先の3か月を読む</a></div>`};
+  return {bar:bar("result"),nav:"history",html:`<div class="stack"><p class="eyebrow">18歳から、今まで</p><h1 class="h1" tabindex="-1">あなたの人生の流れ</h1><p>動きやすい年と、足元を整えたい年。運気の波をたどり、その頃の出来事と照らし合わせてみてください。</p>${renderLifeFlow(flow,selectedLifeYear)}<div id="life-detail" tabindex="-1">${renderLifeYear(flow,selectedLifeYear)}</div><a class="btn" href="#/r/future">この先の3か月を読む</a></div>`};
 }
 function freeMonths(r=S.reading) {
   if(!r || r.split==='day')return [];
@@ -448,9 +459,10 @@ function sTopic(key) {
   const r=S.reading;
   if(r.split==='day')return sResult();
   const f=R.FOCUS[key], cur=monthAdvice(freeMonths(r)[0],key);
-  return {bar:bar('result'),nav:'topic',html:`<div class="stack"><p class="eyebrow">${esc(f.category)}の診断</p><h1 class="h1" tabindex="-1">${TOPIC_TITLES[key]}</h1>${topicSwitcher()}<section class="essence-section"><h2 class="h2">${esc(r.headline)}</h2><p class="prose">${esc(r.answer)}</p></section>
+  return {bar:bar('result'),nav:'topic',html:`<div class="stack"><p class="eyebrow">${esc(f.category)}の診断</p><h1 class="h1" tabindex="-1">${TOPIC_TITLES[key]}</h1><section class="essence-section"><h2 class="h2">${esc(r.headline)}</h2><p class="prose">${esc(r.answer)}</p></section>
+    ${['fit','stay'].includes(key) ? careerHtml(r.summary) : ''}
     ${r.summary ? `<section class="card stack-s"><h2 class="h2">この悩みにつながる、あなたの本質</h2><p>${esc(essenceFor(r.summary.source)?.intro || r.summary.move)}</p><a class="textlink" href="#/r/essence">性格を深く読む</a></section>` : candidatesHtml(r)}
-    <section class="stack-s"><p class="eyebrow">${cur.m}月に大切にしたいこと</p><h2 class="h2">${esc(monthConclusion(cur))}</h2><p>${esc(cur.description)}</p><p>${esc(cur.example)}</p></section><a class="btn secondary" href="#/r/future">${esc(f.category)}の3か月の流れを見る</a>${lineCard()}</div>`};
+    <section class="stack-s"><p class="eyebrow">${cur.m}月に大切にしたいこと</p><h2 class="h2">${esc(monthConclusion(cur))}</h2><p>${esc(cur.description)}</p><p>${esc(cur.example)}</p></section><a class="btn secondary" href="#/r/future">${esc(f.category)}の3か月の流れを見る</a>${topicSwitcher()}${lineCard()}</div>`};
 }
 function sLine() {
   const url=lineUrl();
@@ -661,8 +673,8 @@ async function shareCard() {
 
 // ── ルーター ──
 function redirect(hash) { queueMicrotask(() => { location.replace(hash); }); return { bar: "", html: "" }; }
-const ROUTES = { "": sHome, sample: sSample, focus: sFocus, birth: sBirth, r: sResult, "r/essence": sEssence, "r/history": sHistory, "r/future": sFuture, line:sLine, "r/year": sYear, "r/now": sNow, "r/settings": sSettings, how: sHow };
-const TITLES = { sample: "結果の見本", focus: "質問 1", birth: "質問 2", r: "診断結果", "r/essence": "性格", "r/history":"これまでの流れ", "r/future":"これから3か月", line:"詳しい鑑定", "r/year": "これから3か月", "r/now": "今月の結果", "r/settings": "計算条件と保存", how: "この診断について" };
+const ROUTES = { "": sHome, sample: sSample, focus: sFocus, birth: sBirth, r: sResult, "r/essence": sEssence, "r/career":sCareer, "r/history": sHistory, "r/future": sFuture, line:sLine, "r/year": sYear, "r/now": sNow, "r/settings": sSettings, how: sHow };
+const TITLES = { sample: "結果の見本", focus: "質問 1", birth: "質問 2", r: "診断結果", "r/essence": "性格", "r/career":"向いている仕事", "r/history":"これまでの流れ", "r/future":"これから3か月", line:"詳しい鑑定", "r/year": "これから3か月", "r/now": "今月の結果", "r/settings": "計算条件と保存", how: "この診断について" };
 
 function render() {
   clearPrintReading();
@@ -672,17 +684,17 @@ function render() {
   const view = topic ? sTopic(topic[1]) : mo ? sMonth(mo[1]) : ty ? sType(ty[1]) : (ROUTES[path] || sHome)();
   topbar.innerHTML = view.bar;
   const showTopics = S.input && S.reading && (path === "r/now" || mo);
-  main.innerHTML = (showTopics ? topicSwitcher() : "") + (S.input && !persistent ? `<p class="quiet storage-warning" role="status">このブラウザーでは保存できませんでした。タブを閉じると、生年月日の再入力が必要になることがあります。</p>` : "") + view.html;
-  const showNav = "nav" in view && S.reading && S.reading.split !== "day";
-  document.body.classList.toggle("has-resultnav", Boolean(showNav));
-  resultnav.innerHTML = showNav ? [["sum", "#/r", "本質"], ["history", "#/r/history", "これまで"], ["future", "#/r/future", "これから"], ["topic", `#/r/topic/${S.reading.focus}`, "悩み別"]]
-    .map(([k, h, l]) => `<a href="${h}" ${view.nav === k ? 'aria-current="page"' : ""}>${l}</a>`).join("") : "";
+  main.innerHTML = (S.input && !persistent ? `<p class="quiet storage-warning" role="status">このブラウザーでは保存できませんでした。タブを閉じると、生年月日の再入力が必要になることがあります。</p>` : "") + view.html;
+  document.body.classList.remove("has-resultnav");
+  resultnav.innerHTML = "";
+  if(path.startsWith('r/') && S.reading) main.insertAdjacentHTML('afterbegin','<a class="reading-back" href="#/r">← あなたの診断結果へ</a>');
   const title = topic ? R.FOCUS[topic[1]]?.category : mo ? "月の詳細" : ty ? "シェアされた命紋" : TITLES[path];
   document.title = title ? `${title}｜ハリーの命紋診断` : "ハリーの命紋診断";
   window.scrollTo(0, 0);
   const h = main.querySelector("[tabindex='-1']");
   if (h && render.count++) h.focus({ preventScroll: true });
   bindDynamic();
+  positionLifeChart();
 }
 render.count = 0;
 
@@ -762,6 +774,20 @@ document.addEventListener("submit", (e) => {
 });
 
 // ── 押す操作 ──
+function selectLifeYear(year) {
+  selectedLifeYear=Number(year);
+  const flow=lifeFlow(), graph=main.querySelector('.life-flow');
+  if(graph)graph.outerHTML=renderLifeFlow(flow,selectedLifeYear);
+  const detail=main.querySelector('#life-detail');
+  if(detail)detail.innerHTML=renderLifeYear(flow,selectedLifeYear);
+  positionLifeChart();
+  main.querySelector('#life-year-select')?.focus({preventScroll:true});
+}
+function positionLifeChart() {
+  const select=main.querySelector('#life-year-select'), scroll=main.querySelector('.life-chart-scroll');
+  if(select && scroll) {const width=scroll.scrollWidth/select.options.length;scroll.scrollLeft=width*(select.selectedIndex+.5)-scroll.clientWidth/2;}
+}
+document.addEventListener('change',e=>{if(e.target.id==='life-year-select')selectLifeYear(e.target.value);});
 document.addEventListener("click", async (e) => {
   if (e.target.closest(".skip")) { e.preventDefault(); main.focus(); return; }
   const jump = e.target.closest("[data-jump]");
@@ -776,15 +802,7 @@ document.addEventListener("click", async (e) => {
       if(location.hash===target)render();else location.hash=target;
     }
   }
-  if (act === "life-year") {
-    selectedLifeYear=Number(a.dataset.year);
-    const flow=lifeFlow();
-    const graph=main.querySelector('.life-flow');
-    const scrollLeft=graph?.querySelector('.life-chart-scroll')?.scrollLeft || 0;
-    if(graph){graph.outerHTML=renderLifeFlow(flow,selectedLifeYear);main.querySelector('.life-chart-scroll').scrollLeft=scrollLeft;}
-    const detail=main.querySelector('#life-detail');
-    if(detail){detail.innerHTML=renderLifeYear(flow,selectedLifeYear);detail.focus({preventScroll:true});detail.scrollIntoView({behavior:'instant',block:'start'});}
-  }
+  if (act === "life-year") selectLifeYear(a.dataset.year);
   if (act === "grid") { S.gridView = !S.gridView; save(); render(); }
   if (act === "card") shareCard();
   if (act === "share") {

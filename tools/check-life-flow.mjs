@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { buildLifeFlow, renderLifeFlow, renderLifeYear } from '../life-flow.js';
-import { setsuInCalendarMonth, tenGod, yearMonthPillar } from '../engine.js';
+import { buildLifeFlow, renderLifeFlow, renderLifeYear, lifeWaveLevel } from '../life-flow.js';
+import { setsuInCalendarMonth, tenGod, yearMonthPillar, calcChart } from '../engine.js';
 
 const input = { y: 1990, m: 6, d: 15, country: 'JP', timeMode: 'exact', time: '12:00' };
 const options = { now: new Date('2026-09-24T03:00:00Z') };
@@ -45,11 +45,38 @@ assert.equal(buildLifeFlow({...input, d:32}, options).status, 'uncertain');
 assert.equal(buildLifeFlow({...input, time:'oops'}, options).status, 'uncertain');
 assert.equal(buildLifeFlow({...input, timeMode:'range', from:'13:00', to:'12:00'}, options).status, 'uncertain');
 const html = renderLifeFlow(flow, 2025);
-assert.equal((html.match(/aria-pressed="true"/g)||[]).length, 1);
-assert.ok(html.includes('data-year="2025" aria-pressed="true"'));
-assert.ok(html.includes('上下は運の良し悪しではありません'));
+assert.equal((html.match(/ selected/g)||[]).length, 1);
+assert.ok(html.includes('value="2025" selected'));
+assert.ok(html.includes('id="life-year-select"'));
+assert.ok(!html.includes('<button'));
+assert.ok(html.includes('命紋独自の占いの目安'));
+assert.ok(html.includes('life-fixed-axis'));
+assert.ok(html.indexOf('life-fixed-axis') < html.indexOf('life-chart-scroll'));
+assert.ok(html.includes('grid-template-columns:78px minmax(0,1fr)'));
+assert.ok(!html.includes('y(segment.groupId)'));
+assert.ok(html.includes('検証済みの予測式ではありません'));
 assert.ok(renderLifeYear(flow, 2026).includes('切り替わりの前後'));
 assert.ok(!renderLifeFlow({status:'uncertain',reason:'<img src=x onerror=alert(1)>'}).includes('<img'));
 const tampered = structuredClone(flow); tampered.entries[0].segments[0].description='<script>alert(1)</script>';
 assert.ok(!renderLifeYear(tampered, 2008).includes('<script>'));
+const source = calcChart(input).candidates[0];
+const annual = yearMonthPillar(Date.UTC(2026,5,1)).year;
+assert.deepEqual(lifeWaveLevel(source, annual), lifeWaveLevel(source, annual), '同じ暦なら同じ段階');
+assert.deepEqual(buildLifeFlow(input, options), flow, '同じ入力と現在日時なら同じ流れ');
+const changedMonth = structuredClone(source); changedMonth.month.branch = (source.month.branch + 6) % 12;
+assert.notEqual(lifeWaveLevel(source, annual).balance, lifeWaveLevel(changedMonth, annual).balance, '出生月の季節で基礎の偏りが変わる');
+for (const entry of flow.entries) for (const segment of entry.segments) {
+  assert.ok(segment.wave.level >= 1 && segment.wave.level <= 5);
+  assert.equal(segment.wave.adjustment, Math.abs(segment.wave.balance) - Math.abs(segment.wave.balance + segment.wave.annual));
+  assert.ok(renderLifeYear(flow,entry.year).includes(segment.wave.label));
+}
+const byGroup = new Map();
+for (const e of flow.entries) for (const s of e.segments) {
+  if (!byGroup.has(s.groupId)) byGroup.set(s.groupId, new Set());
+  byGroup.get(s.groupId).add(s.wave.level);
+}
+assert.ok([...byGroup.values()].some(levels => levels.size > 1), '同じテーマ群でも年の地支によって波が変わる');
+const boundaryBirth = new Date(setsuInCalendarMonth(1990, 6).ms + 9 * 3600000);
+const boundaryInput = {...input, m:6, d:boundaryBirth.getUTCDate(), time:`${String(boundaryBirth.getUTCHours()).padStart(2,'0')}:${String(boundaryBirth.getUTCMinutes()).padStart(2,'0')}`};
+assert.equal(buildLifeFlow(boundaryInput,options).status, 'uncertain', '出生月の切替候補で段階が分かれる場合は保留');
 console.log(JSON.stringify({result:'ok',checks:'age 18, inclusive birthday, calendar ages, 109 years, leap birthdays, solar-year boundary, uncertain birth dates, accessibility, escaping'}));
