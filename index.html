@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>命紋診断</title>
+<meta name="description" content="生年月日から、あなたの得意な動き、力が出やすい環境、負担になりやすい条件と、これから12か月の読みを出す無料の占いです。登録なし。入力は端末の中だけで計算します。">
+<meta name="theme-color" content="#0B1530">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="命紋診断">
+<meta property="og:title" content="命紋診断｜生年月日から、あなたの動き方を読む">
+<meta property="og:description" content="得意な動き、力が出やすい環境、負担になりやすい条件と、これから12か月。無料・登録なしの占いです。">
+<meta property="og:url" content="https://maison-orion.github.io/meimon/">
+<meta property="og:image" content="https://maison-orion.github.io/meimon/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/owl-96.png">
+<link rel="apple-touch-icon" href="assets/owl-180.png">
+<meta name="apple-mobile-web-app-title" content="命紋診断">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Noto+Serif+JP:wght@600&display=swap">
+<link rel="stylesheet" href="styles.css?v=1.0.0">
+</head>
+<body>
+<div class="sky" aria-hidden="true"><canvas id="sky"></canvas></div>
+<div class="aura" aria-hidden="true"></div>
+<div id="twinkles" aria-hidden="true"></div>
+<a class="skip" href="#main">本文へ移動</a>
+<div class="shell">
+  <header class="topbar" id="topbar"></header>
+  <nav class="resultnav" id="resultnav" aria-label="結果の章"></nav>
+  <main id="main" tabindex="-1"></main>
+</div>
+<footer class="foot">
+  <p>命紋診断 β版｜占いの読みです。心理検査や適職検査ではありません。</p>
+  <p>入力は、この端末の中だけで計算します。<a href="#/how">この診断について</a></p>
+</footer>
+<p class="toast" id="toast" role="status" aria-live="polite"></p>
+<noscript><p class="noscript">命紋診断を使うには、JavaScriptを有効にしてください。</p></noscript>
+<script type="module" src="app.js?v=1.0.0"></script>
+</body>
+</html>
