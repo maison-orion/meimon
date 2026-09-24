@@ -18,3 +18,12 @@ assert.equal(careerFor('unknown'),null);
 assert.equal(new Set(Object.values(CAREERS).map(c=>c.title)).size,ids.length);
 for(const e of Object.values(ESSENCE))assert.ok(!/読みです|として読みます/.test(e.intro+e.sections.map(x=>x.text).join('')));
 console.log('ok all personality types have reasoned job examples and natural endings');
+
+const {moneyFor,MONEY}=await import('../money.js');
+const {ACTIVE_FOCUS,activeFocus}=await import('../rules.js');
+assert.deepEqual(ACTIVE_FOCUS,['fit','stay','money']);
+for(const key of ['love','relations','self','start','unsure',null])assert.equal(activeFocus(key),'fit');
+for(const id of ids){const m=moneyFor(id);assert.ok(m,`金運の説明がない: ${id}`);for(const text of Object.values(m)){assert.ok(text.length>25);assert.ok(!/必ず儲かる|収入が上がる|的中|臨時収入が入る/.test(text));}}
+assert.equal(moneyFor('unknown'),null);
+assert.equal(new Set(Object.values(MONEY).map(x=>x.action)).size,ids.length);
+console.log('ok 16 money profiles and legacy focus mapping');

@@ -1,19 +1,20 @@
-import { careerFor } from './careers.js?v=1.6.0';
+import { moneyFor } from './money.js?v=1.7.0';
+import { careerFor } from './careers.js?v=1.7.0';
 // ハリーの命紋診断。生年月日から「性格の特徴・あなたに合う環境・苦手になりやすいこと」と、これから3か月のアドバイスを出す。
 // 実行時にAIは呼ばない。暦は engine.js、読みの選び方は method.js、文言は rules.js の表から選ぶだけ。
 // 入力は端末の外へ送らない（ブラウザーに保存。設定から削除できる）。シェアには生年月日や呼び名を入れない。
-import * as E from "./engine.js?v=1.6.0";
-import * as R from "./rules.js?v=1.6.0";
-import * as M from "./method.js?v=1.6.0";
-import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.6.0";
+import * as E from "./engine.js?v=1.7.0";
+import * as R from "./rules.js?v=1.7.0";
+import * as M from "./method.js?v=1.7.0";
+import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.7.0";
 
-import { essenceFor } from "./essence.js?v=1.6.0";
-import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.6.0";
-import { lineUrl } from "./service.js?v=1.6.0";
+import { essenceFor } from "./essence.js?v=1.7.0";
+import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.7.0";
+import { lineUrl } from "./service.js?v=1.7.0";
 
-import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.6.0";
+import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.7.0";
 
-const APP_VERSION = "app-1.6";
+const APP_VERSION = "app-1.7";
 
 // ── 同じブラウザーに出生情報と診断結果を保存する ──
 const blank = () => ({ focus: null, draft: {}, input: null, reading: null, readings: {}, gridView: false, fresh: false });
@@ -84,9 +85,9 @@ function sHome() {
   <section class="hero" aria-labelledby="h">
     <div class="halo"><img class="harry" src="assets/harry.png" alt="月を背に帽子に手を添える案内役、ハリー" width="220" height="220"></div>
     <p class="eyebrow" style="margin-top:16px">ハリーの命紋診断</p>
-    <h1 class="display" id="h" tabindex="-1">自分のことを、<br>少し深く知る。</h1>
-    <p class="lead" style="margin-top:12px">人には見せない気持ち。つい繰り返す行動。あなたらしさと人生の流れを、生まれた日時から読み解きます。</p>
-    <p class="concern-intro">本質と性格 ／ 向いている仕事 ／ 運気の流れ</p>
+    <h1 class="display" id="h" tabindex="-1">仕事とお金に、<br>自分らしい選び方を。</h1>
+    <p class="lead" style="margin-top:12px">何の仕事が向いている？ 今の働き方でいい？ お金との付き合い方は？ 生まれ持った本質から、仕事と金運のヒントを読み解きます。</p>
+    <p class="concern-intro">向いている仕事 ／ 金運 ／ これから3か月</p>
     <ul class="promise" aria-label="この診断の特徴"><li>無料</li><li>登録なし</li><li>質問は2つ</li><li>入力は端末の中だけで計算</li></ul>
     <div class="actions" style="margin-top:28px">
       <a class="btn" href="#/focus">${S.input ? "保存した生年月日で診断する" : "無料で診断する"}</a>
@@ -97,11 +98,11 @@ function sHome() {
   <aside class="mini-sample card" aria-label="診断で読めること">
     <p class="eyebrow">この鑑定でわかること</p>
     <ol class="reading-chapters">
-      <li><span>01</span><div><h2>本質と性格</h2><p>表に出る自分と、心の内側。人との関わり方や、力を発揮しやすい場面。</p></div></li>
-      <li><span>02</span><div><h2>18歳から、今まで</h2><p>動きやすい年、整える年。運気の波を図でたどる。</p></div></li>
-      <li><span>03</span><div><h2>これから3か月</h2><p>仕事、恋愛、人間関係、お金。気になる悩みに合わせた過ごし方。</p></div></li>
+      <li><span>01</span><div><h2>向いている仕事</h2><p>あなたの強みを活かせる職種と、無理なく働ける環境。</p></div></li>
+      <li><span>02</span><div><h2>あなたの金運</h2><p>仕事で価値になる持ち味、お金を使いすぎやすい場面と整え方。</p></div></li>
+      <li><span>03</span><div><h2>これから3か月</h2><p>仕事とお金で、いつ・何を見直すか。月ごとの具体的なヒント。</p></div></li>
     </ol>
-    <p class="guide-sign">あなたを知る時間をご一緒に。<br><span>案内役 ハリー</span></p>
+    <p class="guide-sign">自分に合う働き方と、お金の使い方を。<br><span>案内役 ハリー</span></p>
   </aside>
 </div>`,
   };
@@ -111,7 +112,7 @@ function sHome() {
 const SAMPLE_GROUPS = ["make", "deal", "learn"];
 function sSample() {
   const c02 = R.COMBOS.find((c) => c.id === "C03");
-  const months = SAMPLE_GROUPS.map((k, i) => ({ m: ((9 + i) % 12) + 1, y: 2026 + Math.floor((9 + i) / 12), g: R.focusGroup(R.GROUPS[k].stars[0], "self") }));
+  const months = SAMPLE_GROUPS.map((k, i) => ({ m: ((9 + i) % 12) + 1, y: 2026 + Math.floor((9 + i) / 12), g: R.focusGroup(R.GROUPS[k].stars[0], "fit") }));
   return {
     bar: bar("plain", { label: "結果の見本" }),
     html: `<p class="sample-flag">診断結果の一例です。あなたの結果は、生まれた日時に合わせて表示します。</p>
@@ -119,13 +120,13 @@ function sSample() {
   <section class="cover stack-s" aria-labelledby="h">
     <p class="eyebrow">${crescent} あおいさんの命紋（見本）</p>
     <h1 class="display cover-title" id="h" tabindex="-1">${c02.move}</h1>
-    <p>${c02.hypothesis}</p>${essenceHtml(c02)}
+    <p>${c02.hypothesis}</p>${essenceHtml(c02,{preview:true,work:true})}
   </section>
-  <section class="card stack-s">${kind("read")}${threeLines(c02)}</section>
+  ${careerHtml(c02)}<section class="card stack-s"><p class="eyebrow">金運の見本</p>${moneyHtml(c02)}</section>
   <div class="thread">
-    <div class="knot"><p class="note">今回の相談</p><p class="quote">${R.FOCUS.self.label}</p></div>
-    <div class="knot answer"><p class="note">相談への回答</p><p class="answer-text">${R.FOCUS.self.headline}</p><p style="margin-top:8px">${R.FOCUS.self.answer(c02, R.focusGroup("正官", "self").theme)}</p></div>
-    <div class="knot step"><p class="note">今月の結果（見本）</p><p>${R.focusGroup("食神", "self").action}</p></div>
+    <div class="knot"><p class="note">今回の相談</p><p class="quote">${R.FOCUS.fit.label}</p></div>
+    <div class="knot answer"><p class="note">相談への回答</p><p class="answer-text">${R.FOCUS.fit.headline}</p><p style="margin-top:8px">${R.FOCUS.fit.answer(c02, R.focusGroup("正官", "fit").theme)}</p></div>
+    <div class="knot step"><p class="note">今月の結果（見本）</p><p>${R.focusGroup("食神", "fit").action}</p></div>
   </div>
   <section class="section stack-s" aria-labelledby="s-year"><h2 class="h2" id="s-year">これから3か月（見本）</h2>
     <p class="note">3か月の読みを並べた表示例です。あなたの結果は、生まれた日時に合わせて計算します。</p>
@@ -138,14 +139,14 @@ function sSample() {
 
 // ═════════ 質問1：相談テーマ ═════════
 function sFocus() {
-  const categories = ["仕事", "恋愛・パートナー", "家族・人間関係", "お金・暮らし", "自分自身"];
+  const categories = ["仕事", "金運"];
   return {
     bar: bar("flow", { label: S.input ? "診断を選ぶ" : "質問 1 / 2" }),
     html: `<form class="stack form-narrow" data-form="focus" novalidate>
-  <h1 class="h1" tabindex="-1">いま、気になっていることは？</h1>
-  <p>本質とこれまでの流れは、どれを選んでも読めます。気になるテーマを選ぶと、その悩みについての読みもお伝えします。</p>
+  <h1 class="h1" tabindex="-1">仕事とお金、いま知りたいことは？</h1>
+  <p>いちばん近いものを一つ選んでください。本質・向いている仕事・金運は、同じ生年月日であとから読めます。</p>
   ${S.input ? `<p class="quiet">保存した生年月日：${S.input.y}年${S.input.m}月${S.input.d}日<br><a href="#/birth">生年月日を変更する</a></p>` : ""}
-  <div class="concern-groups" id="f-focus">${categories.map((category) => `<fieldset class="concern-group"><legend>${esc(category)}</legend><div class="choices">${Object.entries(R.FOCUS).filter(([, f]) => f.category === category).map(([k, f]) => radio("focus", k, f.label, S.focus)).join("")}</div></fieldset>`).join("")}</div>
+  <div class="concern-groups" id="f-focus">${categories.map((category) => `<fieldset class="concern-group"><legend>${esc(category)}</legend><div class="choices">${Object.entries(R.FOCUS).filter(([k, f]) => R.ACTIVE_FOCUS.includes(k) && f.category === category).map(([k, f]) => radio("focus", k, f.label, R.activeFocus(S.focus))).join("")}</div></fieldset>`).join("")}</div>
   <p class="error" id="e-focus" hidden>考えたいことに近いものを一つ選んでください。</p>
   <button class="btn" type="submit">${S.input ? "診断結果を見る" : "次へ"}</button>
 </form>`,
@@ -284,7 +285,7 @@ function periodFrom(t) {
 function buildReading() {
   const c = chart();
   const ess = essenceOf(c);
-  const focus = S.focus || "unsure";
+  const focus = R.activeFocus(S.focus);
   const uniq = [...new Map(ess.summaries.filter(Boolean).map((x) => [x.source, x])).values()];
   const base = {
     createdAt: new Date().toISOString(), versions: { calc: E.CALC_VERSION, rules: R.RULES_VERSION, app: APP_VERSION },
@@ -320,7 +321,7 @@ function buildReading() {
 
 // 同じ出生情報で悩みを切り替える。過去の結果は、期間を過ぎたときだけ更新する。
 function selectFocus(focus) {
-  if (!R.FOCUS[focus] || !S.input) return false;
+  if (!R.ACTIVE_FOCUS.includes(focus) || !S.input) return false;
   const previous = { focus: S.focus, reading: S.reading };
   S.focus = focus;
   try {
@@ -337,7 +338,7 @@ function selectFocus(focus) {
 }
 function topicSwitcher() {
   const category = R.FOCUS[S.reading.focus]?.category;
-  return `<details class="topic-picker"><summary>別の悩みも見てみる</summary><nav class="topics" aria-label="診断の種類">${[["fit","仕事"],["love","恋愛"],["relations","人間関係"],["money","お金"],["self","自分"]].map(([key,label]) => `<button type="button" data-act="topic" data-focus="${key}" aria-pressed="${R.FOCUS[key].category === category}">${label}</button>`).join("")}</nav><p class="topic-note note">知りたいテーマをタップしてください。<a href="#/focus">悩みを詳しく選ぶ</a></p></details>`;
+  return `<details class="topic-picker"><summary>仕事・金運のテーマを変える</summary><nav class="topics" aria-label="診断の種類">${[["fit","向いている仕事"],["stay","続けるか変えるか"],["money","金運"]].map(([key,label]) => `<button type="button" data-act="topic" data-focus="${key}" aria-pressed="${key === S.reading.focus}">${label}</button>`).join("")}</nav><p class="topic-note note">知りたいテーマをタップしてください。<a href="#/focus">悩みを詳しく選ぶ</a></p></details>`;
 }
 
 // ═════════ 結果 ═════════
@@ -380,8 +381,9 @@ function shareBlock(r) {
 function essenceHtml(summary, options = {}) {
   const text = summary && essenceFor(summary.source || summary.id);
   if (!text) return "";
+  const parts=options.work!==false ? text.sections.slice(0,4) : text.sections;
   const section=part=>`<section class="essence-section"><h2 class="h2">${esc(part.title)}</h2><p class="prose">${esc(part.text)}</p></section>`;
-  return `<div class="essence-reading"><p class="essence-intro">${esc(text.intro)}</p>${options.preview ? text.sections.slice(0,2).map(section).join('')+`<details class="essence-more"><summary>力を出せる場面と、親しい人に見せる素顔も読む</summary>${text.sections.slice(2).map(section).join('')}</details>` : text.sections.map(section).join('')}</div>`;
+  return `<div class="essence-reading"><p class="essence-intro">${esc(text.intro)}</p>${options.preview ? parts.slice(0,2).map(section).join('')+`<details class="essence-more"><summary>力を出せる場面と、疲れやすい場面も読む</summary>${parts.slice(2).map(section).join('')}</details>` : parts.map(section).join('')}</div>`;
 }
 function careerHtml(summary) {
   const c=summary && careerFor(summary.source || summary.id);
@@ -393,18 +395,27 @@ function sCareer() {
   const r=S.reading;
   return {bar:bar('result'),nav:'sum',html:`<div class="stack"><p class="eyebrow">あなたに向いている仕事</p><h1 class="h1" tabindex="-1">何をする仕事なら、力を出せる？</h1>${r.summary ? `<p>「${esc(r.summary.move)}」という持ち味を、仕事内容に置き換えると。</p>${careerHtml(r.summary)}` : `<p>生まれた時刻によって特徴が分かれるため、候補ごとに向いている仕事を紹介します。</p>${r.uniq.filter((candidate,i,list)=>list.findIndex(x=>(x.source || x.id)===(candidate.source || candidate.id))===i).map((candidate,i)=>`<section class="card stack-s"><p class="eyebrow">候補${i+1}：${esc(candidate.move)}</p>${careerHtml(candidate)}</section>`).join('')}`}<a class="btn" href="#/r/topic/fit">今の仕事の悩みと照らし合わせる</a></div>`};
 }
+function moneyHtml(summary) {
+  const m=summary && moneyFor(summary.source || summary.id);if(!m)return '';
+  return `<div class="money-reading stack"><section class="stack-s"><h2 class="h2">仕事で価値になる、あなたの持ち味</h2><p>${esc(m.strength)}</p></section><section class="stack-s"><h2 class="h2">お金が出ていきやすい場面</h2><p>${esc(m.leak)}</p></section><section class="answer-card stack-s"><h2 class="h2">まず、ここから整えてみて</h2><p>${esc(m.action)}</p></section><p class="note">本質の特徴から考えたヒントです。実際の収入や支出を把握したものではありません。</p></div>`;
+}
+function moneyCandidates(r) {
+  if(r.summary)return moneyHtml(r.summary);
+  return `<p>生まれた時刻によって本質が分かれるため、候補ごとの金運のヒントを紹介します。</p>${r.uniq.filter((x,i,list)=>list.findIndex(y=>(y.source||y.id)===(x.source||x.id))===i).map(x=>`<section class="card stack-s"><p class="eyebrow">${esc(x.move)}</p>${moneyHtml(x)}</section>`).join('')}`;
+}
 function lineCard() {
-  return `<section class="line-card stack-s"><p class="eyebrow">ハリーの詳しい鑑定</p><h2 class="h2">この先の流れを、<br>もっと詳しく。</h2><p>動き出す時期、人との関わり方、自分に合う選び方。気になるテーマを深く読む鑑定は、LINEでご案内します。</p><a class="btn secondary" href="#/line">詳しい鑑定について</a><p class="note">有料鑑定の内容と料金は、受付時にご案内します。</p></section>`;
+  return `<section class="line-card stack-s"><p class="eyebrow">ハリーの詳しい鑑定</p><h2 class="h2">この先の流れを、<br>もっと詳しく。</h2><p>向いている仕事、働く環境、お金との付き合い方。仕事と金運を深く読む鑑定は、LINEでご案内します。</p><a class="btn secondary" href="#/line">詳しい鑑定について</a><p class="note">有料鑑定の内容と料金は、受付時にご案内します。</p></section>`;
 }
 function sResult() {
   const r=S.reading; if (!r) return needReading();
   if (r.split === "day") return {bar:bar("result"),nav:"sum",html:`<div class="stack"><h1 class="h1" tabindex="-1">あなたの本質には、複数の読みがあります</h1><p>生まれた時刻の範囲が日付をまたぐため、ひとつに絞れませんでした。候補ごとの特徴を読めます。</p>${candidatesHtml(r)}<a class="btn" href="#/birth">生まれた時刻を確認する</a></div>`};
   const summary=r.summary;
   return {bar:bar("result"),nav:"sum",html:`<div class="stack">
-    <section class="cover stack-s"><img class="harry" src="assets/harry.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の本質</p><h1 class="display cover-title" tabindex="-1">${summary ? esc(summary.move) : "いくつかの顔を持つ、あなたの本質"}</h1><p class="note">性格から、仕事の選び方と運気の流れまで。</p></section>
-    ${summary ? essenceHtml(summary,{preview:true}) : candidatesHtml(r)}
-    <section class="answer-card stack-s"><p class="eyebrow">${esc(R.FOCUS[r.focus].short)}で気になっていることへ</p><h2 class="h2">${esc(r.headline)}</h2><p>${esc(r.answer)}</p><a class="textlink" href="#/r/topic/${r.focus}">自分に合う対処法を、もう少し詳しく →</a></section>
-    <section class="discover stack-s"><p class="eyebrow">ここから、知りたいことを</p><h2 class="h2">あなたの性格を、選び方につなげる。</h2><a class="discover-link" href="#/r/career"><strong>どんな仕事なら、無理なく力を出せる？</strong><span>${esc(careerFor(summary?.source)?.jobs.slice(0,2).join('・') || '向いている職種')}など、理由と職場の選び方まで →</span></a><a class="discover-link" href="#/r/history"><strong>頑張れた年と、立ち止まった年は？</strong><span>18歳から今までの、運気の波をたどる →</span></a><a class="discover-link" href="#/r/future"><strong>これから、いつ・どう動けばいい？</strong><span>あなたの悩みに合わせて、3か月の過ごし方を知る →</span></a></section>
+    <section class="cover stack-s"><img class="harry" src="assets/harry.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の本質</p><h1 class="display cover-title" tabindex="-1">${summary ? esc(summary.move) : "いくつかの顔を持つ、あなたの本質"}</h1><p class="note">あなたの強みから、仕事とお金の選び方へ。</p></section>
+    ${summary ? essenceHtml(summary,{preview:true,work:true}) : candidatesHtml(r)}
+    <section class="answer-card stack-s"><p class="eyebrow">${esc(R.FOCUS[r.focus].short)}で気になっていることへ</p><h2 class="h2">${esc(r.headline)}</h2><p>${esc(r.focus==='money' && moneyFor(summary?.source) ? moneyFor(summary.source).leak+moneyFor(summary.source).action : r.answer)}</p><a class="textlink" href="#/r/topic/${r.focus}">自分に合う対処法を、もう少し詳しく →</a></section>
+    <section class="discover stack-s"><p class="eyebrow">ここから、知りたいことを</p><h2 class="h2">仕事と金運を、もう少し詳しく。</h2><a class="discover-link" href="#/r/career"><strong>どんな仕事なら、無理なく力を出せる？</strong><span>${esc(careerFor(summary?.source)?.jobs.slice(0,2).join('・') || '向いている職種')}など、理由と職場の選び方まで →</span></a><a class="discover-link" href="#/r/topic/money"><strong>自分の金運は、どう整えればいい？</strong><span>仕事で活きる持ち味と、お金が出ていきやすい場面 →</span></a><a class="discover-link" href="#/r/future"><strong>これから、いつ・どう動けばいい？</strong><span>あなたの悩みに合わせて、3か月の過ごし方を知る →</span></a></section>
+    <details class="essence-more"><summary>18歳から今までの運気も見る</summary><p>仕事や暮らしを選んできた頃の、運気の波をたどれます。</p><a class="textlink" href="#/r/history">これまでの流れを見る →</a></details>
     ${topicSwitcher()}
     ${summary ? `<details class="share-more"><summary>結果を保存・シェアする</summary>${shareBlock(r)}</details>` : ''}
 
@@ -416,7 +427,7 @@ function sEssence() {
   const r=S.reading;
   const extra=[...(r.combos||[]),...(r.basics||[])].filter(x=>x.id!==r.summary?.source);
   return {bar:bar("result"),nav:"sum",html:`<div class="stack"><p class="eyebrow">性格と本質</p><h1 class="h1" tabindex="-1">${nick()}の、内側にあるもの。</h1>
-    ${r.summary ? essenceHtml(r.summary) : candidatesHtml(r)}
+    ${r.summary ? essenceHtml(r.summary,{work:true}) : candidatesHtml(r)}
     ${extra.length ? `<section class="stack-s"><h2 class="h2">あわせて持っている一面</h2>${extra.map(x=>`<details class="why"><summary>${esc(x.move)}</summary>${essenceHtml(x)}</details>`).join('')}</section>` : ''}
     ${r.conditional.length ? `<details class="why"><summary>生まれた時刻で変わる一面</summary>${r.conditional.map(x=>`<section><h3>${esc(x.move)}</h3><p>${esc(essenceFor(x.id)?.intro || x.detail || x.env)}</p></section>`).join('')}</details>` : ''}
     <a class="btn" href="#/r/history">18歳から今までの流れを見る</a></div>`};
@@ -451,24 +462,24 @@ function sFuture() {
     ${topicSwitcher()}<ol class="future-flow" aria-label="3か月の流れ">${months.map(original=>{const m=monthAdvice(original,r.focus);return `<li><a href="#/r/m/${m.key}"><span class="flow-month">${m.m}月</span><strong>${esc(monthConclusion(m))}</strong><span>${esc(m.action)}</span><span class="textlink">詳しく読む →</span></a></li>`}).join('')}</ol>
     <div class="future-next"><span aria-hidden="true">↓</span><p>この先の時期ごとの流れや、悩みを深く読む鑑定へ。</p></div>${lineCard()}</div>`};
 }
-const TOPIC_TITLES={fit:'仕事と、あなたの持ち味',stay:'今の働き方と、あなたの本質',love:'恋愛で見える、あなたの素顔',relations:'人付き合いと、あなたの距離感',money:'お金と、あなたが大切にするもの',self:'あなたらしく過ごすために',start:'新しい一歩と、あなたの始め方',unsure:'まだ言葉にならない気持ちへ'};
+const TOPIC_TITLES={fit:'仕事と、あなたの持ち味',stay:'今の働き方と、あなたの本質',love:'恋愛で見える、あなたの素顔',relations:'人付き合いと、あなたの距離感',money:'あなたの金運を整えるには？',self:'あなたらしく過ごすために',start:'新しい一歩と、あなたの始め方',unsure:'まだ言葉にならない気持ちへ'};
 function sTopic(key) {
   const stop=needReading();if(stop)return stop;
-  if(!R.FOCUS[key])return redirect('#/r/topic/self');
+  if(!R.ACTIVE_FOCUS.includes(key))return redirect('#/r/topic/fit');
   if(S.reading.focus!==key && !selectFocus(key))return sResult();
   const r=S.reading;
   if(r.split==='day')return sResult();
   const f=R.FOCUS[key], cur=monthAdvice(freeMonths(r)[0],key);
   return {bar:bar('result'),nav:'topic',html:`<div class="stack"><p class="eyebrow">${esc(f.category)}の診断</p><h1 class="h1" tabindex="-1">${TOPIC_TITLES[key]}</h1><section class="essence-section"><h2 class="h2">${esc(r.headline)}</h2><p class="prose">${esc(r.answer)}</p></section>
-    ${['fit','stay'].includes(key) ? careerHtml(r.summary) : ''}
+    ${key==='money' ? moneyCandidates(r) : careerHtml(r.summary)}
     ${r.summary ? `<section class="card stack-s"><h2 class="h2">この悩みにつながる、あなたの本質</h2><p>${esc(essenceFor(r.summary.source)?.intro || r.summary.move)}</p><a class="textlink" href="#/r/essence">性格を深く読む</a></section>` : candidatesHtml(r)}
     <section class="stack-s"><p class="eyebrow">${cur.m}月に大切にしたいこと</p><h2 class="h2">${esc(monthConclusion(cur))}</h2><p>${esc(cur.description)}</p><p>${esc(cur.example)}</p></section><a class="btn secondary" href="#/r/future">${esc(f.category)}の3か月の流れを見る</a>${topicSwitcher()}${lineCard()}</div>`};
 }
 function sLine() {
   const url=lineUrl();
-  return {bar:bar('plain',{label:'詳しい鑑定'}),html:`<div class="stack"><p class="eyebrow">ハリーの詳しい鑑定</p><h1 class="h1" tabindex="-1">自分を知った、その先へ。</h1><p class="lead">これからどう動くか。どんな関係を育てるか。今のあなたの悩みに合わせて、もう一歩深く読み解く鑑定をLINEでご案内します。</p>
-    <section class="card stack-s"><h2 class="h2">詳しい鑑定でお届けしたいこと</h2><ul class="offer-list"><li>これからの時期ごとの流れと、動き方のヒント</li><li>仕事や恋愛など、気になるテーマを深く読む解説</li><li>あなたの本質に合わせた、迷ったときの選び方</li></ul><p class="note">鑑定の期間、提供内容、料金は受付時にご案内します。現在、このアプリで購入手続きは行いません。</p></section>
-    <ol class="line-steps"><li>無料診断で、本質とこれまでの流れを知る</li><li>LINEで詳しい鑑定の案内を受け取る</li><li>内容と料金を確認してから申し込む</li></ol>
+  return {bar:bar('plain',{label:'詳しい鑑定'}),html:`<div class="stack"><p class="eyebrow">ハリーの詳しい鑑定</p><h1 class="h1" tabindex="-1">自分を知った、その先へ。</h1><p class="lead">自分に合う仕事をどう選ぶか。持ち味をどう活かし、お金とどう付き合うか。仕事と金運をもう一歩深く読み解く鑑定をLINEでご案内します。</p>
+    <section class="card stack-s"><h2 class="h2">詳しい鑑定でお届けしたいこと</h2><ul class="offer-list"><li>これからの時期ごとの流れと、動き方のヒント</li><li>仕事選び・働く環境・金運を深く読む解説</li><li>あなたの本質に合わせた、迷ったときの選び方</li></ul><p class="note">鑑定の期間、提供内容、料金は受付時にご案内します。現在、このアプリで購入手続きは行いません。</p></section>
+    <ol class="line-steps"><li>無料診断で、仕事の持ち味と金運のヒントを知る</li><li>LINEで詳しい鑑定の案内を受け取る</li><li>内容と料金を確認してから申し込む</li></ol>
     ${url ? `<a class="btn line-button" href="${esc(url)}" target="_blank" rel="noopener noreferrer">LINEで鑑定の案内を受け取る</a><p class="note">この操作で生年月日や診断結果がLINEへ送信されることはありません。</p>` : `<p class="quiet">LINEでのご案内は、受付開始時にこのページでお知らせします。無料の診断結果は引き続きご覧いただけます。</p>`}
     <a class="textlink" href="${S.reading?'#/r':'#/focus'}">${S.reading?'無料の診断結果へ戻る':'無料で自分を診断する'}</a></div>`};
 }
@@ -547,10 +558,11 @@ function printReadingHtml(state, withBirth) {
   const birth = withBirth && input ? `<section class="print-block"><h2>入力情報</h2>
     ${input.nick ? `<p>呼び名：${esc(input.nick)}</p>` : ""}<p>生年月日：${esc(input.y)}年${esc(input.m)}月${esc(input.d)}日<br>出生地：${placeText(input)}<br>時刻：${esc(timeText(input))}</p>
     <p>命式（年・月・日・時）：${(r.candidates || []).map(esc).join("／")}</p></section>` : "";
-  return `<h1>ハリーの命紋診断・鑑定結果</h1><p>本質と性格、これから3か月の鑑定</p>
+  return `<h1>ハリーの命紋診断・鑑定結果</h1><p>仕事と金運、これから3か月の鑑定</p>
     <p class="print-note">${esc(R.DISCLAIMER)}</p>
     <section><h2>あなたの性格</h2>${r.summary ? essenceHtml(r.summary) + three(r.summary) : `<p>出生情報の幅によって読みが分かれています。</p>${(r.uniq || []).map((s, i) => `<section class="print-block"><h3>候補${i + 1}</h3>${three(s)}</section>`).join("")}`}</section>
     <section class="print-block"><h2>今回の相談</h2><p>${esc(r.consult)}</p>${r.headline ? `<h3>${esc(r.headline)}</h3><p>${esc(r.answer)}</p>` : ""}<p>相談内容は、本質の計算には使っていません。</p></section>
+    ${r.split!=="day" ? `<section><h2>向いている仕事</h2>${r.summary ? careerHtml(r.summary) : r.uniq.filter((x,i,list)=>list.findIndex(y=>(y.source||y.id)===(x.source||x.id))===i).map(x=>`<section class="print-block"><h3>${esc(x.move)}</h3>${careerHtml(x)}</section>`).join('')}</section><section><h2>金運のヒント</h2>${moneyCandidates(r)}</section>` : ""}
     ${sections("特徴の組み合わせ", r.combos)}${sections("性格の特徴", r.basics)}${sections("条件付きの候補", r.conditional)}
     ${months ? `<section><h2>3か月のアドバイス</h2><p>月ごとのアドバイスです。出来事を予測したものではありません。</p>${months}</section>` : ""}
     ${birth}<section class="print-block"><h2>計算と読みの条件</h2><p>${esc(R.LIMITED)}</p><p>年の境目は立春、月の境目は節入り、日付の境目は現地0時です。真太陽時の補正はしません。</p>
@@ -564,9 +576,9 @@ function clearPrintReading() {
 window.addEventListener("afterprint", clearPrintReading);
 
 function sHow() {
-  return {bar:bar('plain',{label:'ハリーの命紋診断について'}),html:`<div class="stack prose"><h1 class="h1" tabindex="-1">命紋は、あなたらしさを読む独自の占いです。</h1><p>生まれた日時を手がかりに、内面の欲求、人との関わり方、力を出しやすい場面を読み解きます。性格とこれまでの流れ、これからの過ごし方を、一つの鑑定としてつなげることを大切にしています。</p>
+  return {bar:bar('plain',{label:'ハリーの命紋診断について'}),html:`<div class="stack prose"><h1 class="h1" tabindex="-1">仕事と金運を、本質から読む占いです。</h1><p>生まれた日時を手がかりに、あなたの本質、向いている仕事、金運との付き合い方を読み解きます。職種だけでなく、力が出る環境やお金の使い方、これから3か月の過ごし方までつなげます。金運は収入額や資産の増減の予測ではありません。</p>
     <section class="stack-s"><h2 class="h2">案内役のハリー</h2><p>ハリーは、自分を知る時間に寄り添う、このサービスのオリジナルキャラクターです。</p></section><section class="stack-s"><h2 class="h2">命紋独自の読み方</h2><p>東洋の暦や干支の考え方を参考に、複数の特徴の組み合わせと、日常の場面への読み替えを独自に設計しています。伝統的な暦そのものを新しく発明した占いではありません。</p><p>本質の10種類の読みと6種類の組み合わせをもとに、年や月ごとの5つのテーマを重ねています。本人が選ぶ悩みは、説明する場面に使います。</p></section>
-    <section class="stack-s"><h2 class="h2">無料で読めること</h2><p>本質と性格、18歳から現在までの年ごとの流れ、これから3か月のアドバイスです。仕事、恋愛、人間関係、お金、自分のテーマで読むことができます。</p></section>
+    <section class="stack-s"><h2 class="h2">無料で読めること</h2><p>仕事で活かせる本質と性格、向いている職種、金運のヒント、これから3か月の過ごし方です。18歳から現在までの運気の波も読めます。</p></section>
     <section class="stack-s"><h2 class="h2">占いの受け止め方</h2><p>${R.DISCLAIMER}</p><p>過去の図は、生まれた日時と各年の暦から読んだテーマです。実際に起きた出来事の記録や、運の良し悪しを測定した数値ではありません。ご自身の経験と照らし合わせてお読みください。</p><p>的中率や、出来事を予測する精度は確認されていません。</p></section>
     <section class="stack-s" id="data"><h2 class="h2">入力情報の扱い</h2><p>生年月日と結果はこのブラウザーに保存し、外部へ送信しません。通常は閉じても残り、設定から削除できます。ブラウザーのデータを消したときやプライベートモードでは残らない場合があります。別の端末とは共有されません。</p><p>シェアには生年月日や呼び名は含みません。LINEへの移動でも出生情報は自動送信しません。</p><p class="note">書体はGoogle Fontsから読み込みます。アクセス解析は入れていません。18歳以上の方が対象です。</p></section><a class="btn" href="#/focus">自分の命紋を読む</a></div>`};
 }
@@ -584,7 +596,7 @@ function sType(id) {
     <h1 class="display cover-title" id="h" tabindex="-1">${x.move}</h1>
   </section>
   <section class="card stack-s">${kind("read")}${x.detail ? `<p>${x.detail}</p>` : ""}${threeLines(x, "", false)}</section>
-  <p>これはハリーの命紋診断の読みの一つです。生年月日から、あなたの命紋と、これから3か月のアドバイスを無料で出せます。</p>
+  <p>これはハリーの命紋診断の本質の一つです。生まれた日時から、向いている仕事と金運、3か月の過ごし方を無料で読めます。</p>
   <a class="btn" href="#/focus">自分の命紋を診断する</a>
   <p class="note">${R.DISCLAIMER}</p>
 </div>`,
@@ -622,7 +634,7 @@ async function makeCard(r) {
     ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() ** 3 * 2.4 + 0.5, 0, Math.PI * 2); ctx.fill();
   }
   const serif = '"Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif', sans = '"Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif';
-  const all = `ハリーの命紋診断私の命紋は「」${s.move}${s.env}${s.burden}あなたに合う環境苦手になりやすいこと#生年月日から、あなたの性格を読む占い${location.host}`;
+  const all = `ハリーの命紋診断私の命紋は「」${s.move}${s.env}${s.burden}あなたに合う環境苦手になりやすいこと#本質から、仕事と金運を読む占い${location.host}`;
   try { await Promise.all([document.fonts.load(`600 72px "Noto Serif JP"`, all), document.fonts.load(`600 36px "Noto Sans JP"`, all), document.fonts.load(`400 26px "Noto Sans JP"`, all)]); } catch { /* 端末の書体で描く */ }
   const cx = 160, cy = 180;
   glow(cx, cy, 190, "rgba(240,217,155,.35)");
@@ -651,7 +663,7 @@ async function makeCard(r) {
   ctx.fillStyle = "rgba(217,181,106,.35)"; ctx.fillRect(80, H - 190, W - 160, 1);
   ctx.fillStyle = "#e7edf0"; ctx.font = `600 36px ${serif}`; ctx.fillText("#ハリーの命紋診断", 80, H - 160);
   ctx.fillStyle = "#b3bfcd"; ctx.font = `400 26px ${sans}`;
-  ctx.fillText("生年月日から、あなたの性格を読む占い", 80, H - 104);
+  ctx.fillText("本質から、仕事と金運を読む占い", 80, H - 104);
   ctx.fillText(location.host + location.pathname.replace(/index\.html$/, ""), 80, H - 64);
   return cv;
 }
@@ -677,6 +689,7 @@ const ROUTES = { "": sHome, sample: sSample, focus: sFocus, birth: sBirth, r: sR
 const TITLES = { sample: "結果の見本", focus: "質問 1", birth: "質問 2", r: "診断結果", "r/essence": "性格", "r/career":"向いている仕事", "r/history":"これまでの流れ", "r/future":"これから3か月", line:"詳しい鑑定", "r/year": "これから3か月", "r/now": "今月の結果", "r/settings": "計算条件と保存", how: "この診断について" };
 
 function render() {
+  if(S.reading && !R.ACTIVE_FOCUS.includes(S.reading.focus)) selectFocus("fit");
   clearPrintReading();
   const path = location.hash.replace(/^#\/?/, "").split("?")[0];
   const mo = path.match(/^r\/m\/(\d{4}-\d{2})$/), ty = path.match(/^t\/([CT]\d{2})$/);
@@ -739,7 +752,7 @@ document.addEventListener("submit", (e) => {
   const kindOf = form.dataset.form;
   if (kindOf === "focus") {
     const v = new FormData(form).get("focus");
-    if (!v) { main.querySelector("#e-focus").hidden = false; main.querySelector("#f-focus input")?.focus(); return; }
+    if (!R.ACTIVE_FOCUS.includes(v)) { main.querySelector("#e-focus").hidden = false; main.querySelector("#f-focus input")?.focus(); return; }
     if (S.input) { if (selectFocus(v)) location.hash = "#/r"; }
     else { S.focus = v; location.hash = "#/birth"; }
   }
