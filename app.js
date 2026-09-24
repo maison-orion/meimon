@@ -1,20 +1,20 @@
-import { moneyFor } from './money.js?v=1.7.0';
-import { careerFor } from './careers.js?v=1.7.0';
+import { moneyFor } from './money.js?v=1.8.0';
+import { careerFor } from './careers.js?v=1.8.0';
 // ハリーの命紋診断。生年月日から「性格の特徴・あなたに合う環境・苦手になりやすいこと」と、これから3か月のアドバイスを出す。
 // 実行時にAIは呼ばない。暦は engine.js、読みの選び方は method.js、文言は rules.js の表から選ぶだけ。
 // 入力は端末の外へ送らない（ブラウザーに保存。設定から削除できる）。シェアには生年月日や呼び名を入れない。
-import * as E from "./engine.js?v=1.7.0";
-import * as R from "./rules.js?v=1.7.0";
-import * as M from "./method.js?v=1.7.0";
-import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.7.0";
+import * as E from "./engine.js?v=1.8.0";
+import * as R from "./rules.js?v=1.8.0";
+import * as M from "./method.js?v=1.8.0";
+import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.8.0";
 
-import { essenceFor } from "./essence.js?v=1.7.0";
-import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.7.0";
-import { lineUrl } from "./service.js?v=1.7.0";
+import { essenceFor } from "./essence.js?v=1.8.0";
+import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.8.0";
+import { lineUrl } from "./service.js?v=1.8.0";
 
-import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.7.0";
+import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.8.0";
 
-const APP_VERSION = "app-1.7";
+const APP_VERSION = "app-1.8";
 
 // ── 同じブラウザーに出生情報と診断結果を保存する ──
 const blank = () => ({ focus: null, draft: {}, input: null, reading: null, readings: {}, gridView: false, fresh: false });
@@ -119,8 +119,8 @@ function sSample() {
 <div class="stack" style="margin-top:20px">
   <section class="cover stack-s" aria-labelledby="h">
     <p class="eyebrow">${crescent} あおいさんの命紋（見本）</p>
-    <h1 class="display cover-title" id="h" tabindex="-1">${c02.move}</h1>
-    <p>${c02.hypothesis}</p>${essenceHtml(c02,{preview:true,work:true})}
+    <h1 class="display cover-title" id="h" tabindex="-1">${R.typeName(c02.id)}</h1>
+    <p>${c02.move}。${c02.hypothesis}</p>${essenceHtml(c02,{preview:true,work:true})}
   </section>
   ${careerHtml(c02)}<section class="card stack-s"><p class="eyebrow">金運の見本</p>${moneyHtml(c02)}</section>
   <div class="thread">
@@ -274,7 +274,7 @@ function threeLines(s, extra = "", withMove = true) {
 }
 function candidatesHtml(r) {
   return `<section class="stack-s"><p class="quiet">生まれた時刻の幅の中で、手がかりにする星が変わります。どちらか一つに決めず、候補を並べます。時刻の幅を狭められる場合は、<a href="#/birth">入力を直す</a>と一つに絞れることがあります。</p>
-    ${r.uniq.map((x, i) => `<section class="card stack-s"><h2 class="h2">候補${i + 1}：${x.move}</h2>${kind("read")}${threeLines(x, "", false)}${essenceHtml(x)}</section>`).join("")}</section>`;
+    ${r.uniq.map((x, i) => `<section class="card stack-s"><h2 class="h2">候補${i + 1}：${esc(R.typeName(x.source))}</h2><p>${esc(x.move)}</p>${kind("read")}${threeLines(x, "", false)}${essenceHtml(x)}</section>`).join("")}</section>`;
 }
 
 // ═════════ 結果の組み立て（確定した本文を保存し、再表示で作り直さない） ═════════
@@ -363,7 +363,7 @@ function needReading(allowSplit = false) {
 // シェア：読みの内容と、その読みを紹介するページへのリンクだけ（生年月日・呼び名は入れない）
 const typeOf = (id) => R.COMBOS.find((c) => c.id === id) || Object.entries(R.BASICS).map(([star, b]) => ({ star, ...b })).find((b) => b.id === id);
 const shareUrl = (r) => `${location.origin}${location.pathname}#/t/${r.summary.source}`;
-const shareText = (r) => R.SHARE_TEXT(r.summary.move);
+const shareText = (r) => R.SHARE_TEXT(R.typeName(r.summary.source));
 function shareBlock(r) {
   const u = encodeURIComponent(shareUrl(r)), tx = encodeURIComponent(shareText(r));
   return `<section class="card stack-s noprint" aria-labelledby="sh"><h2 class="h2" id="sh">結果をシェアする</h2>
@@ -393,7 +393,7 @@ function careerHtml(summary) {
 function sCareer() {
   const stop=needReading();if(stop)return stop;
   const r=S.reading;
-  return {bar:bar('result'),nav:'sum',html:`<div class="stack"><p class="eyebrow">あなたに向いている仕事</p><h1 class="h1" tabindex="-1">何をする仕事なら、力を出せる？</h1>${r.summary ? `<p>「${esc(r.summary.move)}」という持ち味を、仕事内容に置き換えると。</p>${careerHtml(r.summary)}` : `<p>生まれた時刻によって特徴が分かれるため、候補ごとに向いている仕事を紹介します。</p>${r.uniq.filter((candidate,i,list)=>list.findIndex(x=>(x.source || x.id)===(candidate.source || candidate.id))===i).map((candidate,i)=>`<section class="card stack-s"><p class="eyebrow">候補${i+1}：${esc(candidate.move)}</p>${careerHtml(candidate)}</section>`).join('')}`}<a class="btn" href="#/r/topic/fit">今の仕事の悩みと照らし合わせる</a></div>`};
+  return {bar:bar('result'),nav:'sum',html:`<div class="stack"><p class="eyebrow">あなたに向いている仕事</p><h1 class="h1" tabindex="-1">何をする仕事なら、力を出せる？</h1>${r.summary ? `<p>「${esc(r.summary.move)}」という持ち味を、仕事内容に置き換えると。</p>${careerHtml(r.summary)}` : `<p>生まれた時刻によって特徴が分かれるため、候補ごとに向いている仕事を紹介します。</p>${r.uniq.filter((candidate,i,list)=>list.findIndex(x=>(x.source || x.id)===(candidate.source || candidate.id))===i).map((candidate,i)=>`<section class="card stack-s"><p class="eyebrow">候補${i+1}：${esc(R.typeName(candidate.source))}</p><p>${esc(candidate.move)}</p>${careerHtml(candidate)}</section>`).join('')}`}<a class="btn" href="#/r/topic/fit">今の仕事の悩みと照らし合わせる</a></div>`};
 }
 function moneyHtml(summary) {
   const m=summary && moneyFor(summary.source || summary.id);if(!m)return '';
@@ -401,7 +401,7 @@ function moneyHtml(summary) {
 }
 function moneyCandidates(r) {
   if(r.summary)return moneyHtml(r.summary);
-  return `<p>生まれた時刻によって本質が分かれるため、候補ごとの金運のヒントを紹介します。</p>${r.uniq.filter((x,i,list)=>list.findIndex(y=>(y.source||y.id)===(x.source||x.id))===i).map(x=>`<section class="card stack-s"><p class="eyebrow">${esc(x.move)}</p>${moneyHtml(x)}</section>`).join('')}`;
+  return `<p>生まれた時刻によって本質が分かれるため、候補ごとの金運のヒントを紹介します。</p>${r.uniq.filter((x,i,list)=>list.findIndex(y=>(y.source||y.id)===(x.source||x.id))===i).map(x=>`<section class="card stack-s"><p class="eyebrow">${esc(R.typeName(x.source))}</p><p>${esc(x.move)}</p>${moneyHtml(x)}</section>`).join('')}`;
 }
 function lineCard() {
   return `<section class="line-card stack-s"><p class="eyebrow">ハリーの詳しい鑑定</p><h2 class="h2">この先の流れを、<br>もっと詳しく。</h2><p>向いている仕事、働く環境、お金との付き合い方。仕事と金運を深く読む鑑定は、LINEでご案内します。</p><a class="btn secondary" href="#/line">詳しい鑑定について</a><p class="note">有料鑑定の内容と料金は、受付時にご案内します。</p></section>`;
@@ -411,7 +411,7 @@ function sResult() {
   if (r.split === "day") return {bar:bar("result"),nav:"sum",html:`<div class="stack"><h1 class="h1" tabindex="-1">あなたの本質には、複数の読みがあります</h1><p>生まれた時刻の範囲が日付をまたぐため、ひとつに絞れませんでした。候補ごとの特徴を読めます。</p>${candidatesHtml(r)}<a class="btn" href="#/birth">生まれた時刻を確認する</a></div>`};
   const summary=r.summary;
   return {bar:bar("result"),nav:"sum",html:`<div class="stack">
-    <section class="cover stack-s"><img class="harry" src="assets/harry.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の本質</p><h1 class="display cover-title" tabindex="-1">${summary ? esc(summary.move) : "いくつかの顔を持つ、あなたの本質"}</h1><p class="note">あなたの強みから、仕事とお金の選び方へ。</p></section>
+    <section class="cover stack-s"><img class="harry" src="assets/harry.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の本質</p><h1 class="display cover-title" tabindex="-1">${summary ? esc(R.typeName(summary.source)) : "いくつかの顔を持つ、あなたの本質"}</h1>${summary ? `<p>${esc(summary.move)}</p>` : ""}<p class="note">あなたの強みから、仕事とお金の選び方へ。</p></section>
     ${summary ? essenceHtml(summary,{preview:true,work:true}) : candidatesHtml(r)}
     <section class="answer-card stack-s"><p class="eyebrow">${esc(R.FOCUS[r.focus].short)}で気になっていることへ</p><h2 class="h2">${esc(r.headline)}</h2><p>${esc(r.focus==='money' && moneyFor(summary?.source) ? moneyFor(summary.source).leak+moneyFor(summary.source).action : r.answer)}</p><a class="textlink" href="#/r/topic/${r.focus}">自分に合う対処法を、もう少し詳しく →</a></section>
     <section class="discover stack-s"><p class="eyebrow">ここから、知りたいことを</p><h2 class="h2">仕事と金運を、もう少し詳しく。</h2><a class="discover-link" href="#/r/career"><strong>どんな仕事なら、無理なく力を出せる？</strong><span>${esc(careerFor(summary?.source)?.jobs.slice(0,2).join('・') || '向いている職種')}など、理由と職場の選び方まで →</span></a><a class="discover-link" href="#/r/topic/money"><strong>自分の金運は、どう整えればいい？</strong><span>仕事で活きる持ち味と、お金が出ていきやすい場面 →</span></a><a class="discover-link" href="#/r/future"><strong>これから、いつ・どう動けばいい？</strong><span>あなたの悩みに合わせて、3か月の過ごし方を知る →</span></a></section>
@@ -427,9 +427,9 @@ function sEssence() {
   const r=S.reading;
   const extra=[...(r.combos||[]),...(r.basics||[])].filter(x=>x.id!==r.summary?.source);
   return {bar:bar("result"),nav:"sum",html:`<div class="stack"><p class="eyebrow">性格と本質</p><h1 class="h1" tabindex="-1">${nick()}の、内側にあるもの。</h1>
-    ${r.summary ? essenceHtml(r.summary,{work:true}) : candidatesHtml(r)}
-    ${extra.length ? `<section class="stack-s"><h2 class="h2">あわせて持っている一面</h2>${extra.map(x=>`<details class="why"><summary>${esc(x.move)}</summary>${essenceHtml(x)}</details>`).join('')}</section>` : ''}
-    ${r.conditional.length ? `<details class="why"><summary>生まれた時刻で変わる一面</summary>${r.conditional.map(x=>`<section><h3>${esc(x.move)}</h3><p>${esc(essenceFor(x.id)?.intro || x.detail || x.env)}</p></section>`).join('')}</details>` : ''}
+    ${r.summary ? `<p class="eyebrow">${esc(R.typeName(r.summary.source))}</p>${essenceHtml(r.summary,{work:true})}` : candidatesHtml(r)}
+    ${extra.length ? `<section class="stack-s"><h2 class="h2">あわせて持っている一面</h2>${extra.map(x=>`<details class="why"><summary>${esc(R.typeName(x.id))}：${esc(x.move)}</summary>${essenceHtml(x)}</details>`).join('')}</section>` : ''}
+    ${r.conditional.length ? `<details class="why"><summary>生まれた時刻で変わる一面</summary>${r.conditional.map(x=>`<section><h3>${esc(R.typeName(x.id))}</h3><p>${esc(x.move)}</p><p>${esc(essenceFor(x.id)?.intro || x.detail || x.env)}</p></section>`).join('')}</details>` : ''}
     <a class="btn" href="#/r/history">18歳から今までの流れを見る</a></div>`};
 }
 
@@ -550,7 +550,7 @@ function sSettings() {
 function printReadingHtml(state, withBirth) {
   const r = state.reading, input = state.input;
   const three = (s) => `<dl class="three"><div><dt>性格の特徴</dt><dd>${esc(s.move)}</dd></div><div><dt>あなたに合う環境</dt><dd>${esc(s.env)}</dd></div><div><dt>苦手になりやすいこと</dt><dd>${esc(s.burden)}</dd></div></dl>`;
-  const item = (x) => `<section class="print-block"><h3>${esc(x.id)}：${esc(x.move)}</h3>${three(x)}${x.detail ? `<p>${esc(x.detail)}</p>` : ""}</section>`;
+  const item = (x) => `<section class="print-block"><h3>${esc(R.typeName(x.id))}：${esc(x.move)}</h3>${three(x)}${x.detail ? `<p>${esc(x.detail)}</p>` : ""}</section>`;
   const sections = (title, xs) => xs?.length ? `<section><h2>${title}</h2>${xs.map(item).join("")}</section>` : "";
   const months = freeMonths(r).map((original) => { const m=monthAdvice(original,r.focus); return `<section class="print-block"><h3>${esc(m.y)}年${esc(m.m)}月：${esc(monthConclusion(m))}</h3>
     <p>1日〜${esc(m.boundary.day)}日${esc(m.boundary.hour)}時ごろ：「${esc(m.before.theme)}」<br>${esc(m.boundary.day)}日${esc(m.boundary.hour)}時ごろ〜${esc(m.last)}日：「${esc(original.theme)}」（日本時間）</p>
@@ -560,7 +560,7 @@ function printReadingHtml(state, withBirth) {
     <p>命式（年・月・日・時）：${(r.candidates || []).map(esc).join("／")}</p></section>` : "";
   return `<h1>ハリーの命紋診断・鑑定結果</h1><p>仕事と金運、これから3か月の鑑定</p>
     <p class="print-note">${esc(R.DISCLAIMER)}</p>
-    <section><h2>あなたの性格</h2>${r.summary ? essenceHtml(r.summary) + three(r.summary) : `<p>出生情報の幅によって読みが分かれています。</p>${(r.uniq || []).map((s, i) => `<section class="print-block"><h3>候補${i + 1}</h3>${three(s)}</section>`).join("")}`}</section>
+    <section><h2>あなたの性格</h2>${r.summary ? `<h3>${esc(R.typeName(r.summary.source))}</h3><p>${esc(r.summary.move)}</p>` + essenceHtml(r.summary) + three(r.summary) : `<p>出生情報の幅によって読みが分かれています。</p>${(r.uniq || []).map((s, i) => `<section class="print-block"><h3>候補${i + 1}：${esc(R.typeName(s.source))}</h3>${three(s)}</section>`).join("")}`}</section>
     <section class="print-block"><h2>今回の相談</h2><p>${esc(r.consult)}</p>${r.headline ? `<h3>${esc(r.headline)}</h3><p>${esc(r.answer)}</p>` : ""}<p>相談内容は、本質の計算には使っていません。</p></section>
     ${r.split!=="day" ? `<section><h2>向いている仕事</h2>${r.summary ? careerHtml(r.summary) : r.uniq.filter((x,i,list)=>list.findIndex(y=>(y.source||y.id)===(x.source||x.id))===i).map(x=>`<section class="print-block"><h3>${esc(x.move)}</h3>${careerHtml(x)}</section>`).join('')}</section><section><h2>金運のヒント</h2>${moneyCandidates(r)}</section>` : ""}
     ${sections("特徴の組み合わせ", r.combos)}${sections("性格の特徴", r.basics)}${sections("条件付きの候補", r.conditional)}
@@ -593,7 +593,8 @@ function sType(id) {
   <section class="cover stack-s" aria-labelledby="h">
     <img class="harry" src="assets/harry.png" alt="" width="56" height="56">
     <p class="eyebrow">${crescent} シェアされた命紋</p>
-    <h1 class="display cover-title" id="h" tabindex="-1">${x.move}</h1>
+    <h1 class="display cover-title" id="h" tabindex="-1">${esc(R.typeName(id))}</h1>
+    <p>${esc(x.move)}</p>
   </section>
   <section class="card stack-s">${kind("read")}${x.detail ? `<p>${x.detail}</p>` : ""}${threeLines(x, "", false)}</section>
   <p>これはハリーの命紋診断の本質の一つです。生まれた日時から、向いている仕事と金運、3か月の過ごし方を無料で読めます。</p>
@@ -634,7 +635,7 @@ async function makeCard(r) {
     ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() ** 3 * 2.4 + 0.5, 0, Math.PI * 2); ctx.fill();
   }
   const serif = '"Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif', sans = '"Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif';
-  const all = `ハリーの命紋診断私の命紋は「」${s.move}${s.env}${s.burden}あなたに合う環境苦手になりやすいこと#本質から、仕事と金運を読む占い${location.host}`;
+  const all = `ハリーの命紋診断私の命紋は「」${R.typeName(s.source)}${s.move}${s.env}${s.burden}あなたに合う環境苦手になりやすいこと#本質から、仕事と金運を読む占い${location.host}`;
   try { await Promise.all([document.fonts.load(`600 72px "Noto Serif JP"`, all), document.fonts.load(`600 36px "Noto Sans JP"`, all), document.fonts.load(`400 26px "Noto Sans JP"`, all)]); } catch { /* 端末の書体で描く */ }
   const cx = 160, cy = 180;
   glow(cx, cy, 190, "rgba(240,217,155,.35)");
@@ -649,7 +650,7 @@ async function makeCard(r) {
   let y = 340;
   ctx.fillStyle = "#dfc995"; ctx.font = `600 74px ${serif}`;
   ctx.shadowColor = "rgba(217,181,106,.45)"; ctx.shadowBlur = 24;
-  for (const line of wrapText(ctx, `「${s.move}」`, W - 170)) { ctx.fillText(line, 80, y); y += 106; }
+  for (const line of wrapText(ctx, `「${R.typeName(s.source)}」`, W - 170)) { ctx.fillText(line, 80, y); y += 106; }
   ctx.shadowBlur = 0;
   y += 36;
   for (const [label, text] of [["あなたに合う環境", s.env], ["苦手になりやすいこと", s.burden]]) {

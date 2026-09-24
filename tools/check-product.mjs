@@ -1,8 +1,20 @@
 import assert from 'node:assert/strict';
 import { ESSENCE, essenceFor } from '../essence.js';
-import { BASICS, COMBOS } from '../rules.js';
+import { BASICS, COMBOS, TYPE_NAMES, typeName } from '../rules.js';
+import { readOne, summaryOf } from '../method.js';
 import { lineUrl } from '../service.js';
 const ids=[...Object.values(BASICS),...COMBOS].map(x=>x.id);
+assert.deepEqual(Object.keys(TYPE_NAMES).sort(),[...ids].sort());
+assert.equal(new Set(Object.values(TYPE_NAMES)).size,ids.length);
+for(const id of ids)assert.ok(typeName(id)?.endsWith('の紋'));
+assert.equal(typeName('unknown'),null);
+const reachable=new Set();
+const stars=[...Object.keys(BASICS),null];
+for(const month of stars)for(const year of stars)for(const hour of stars){
+  const summary=summaryOf(readOne({month,year,hour}));
+  if(summary)reachable.add(summary.source);
+}
+assert.deepEqual([...reachable].sort(),[...ids].sort());
 assert.equal(Object.keys(ESSENCE).length,ids.length);
 for(const id of ids){const e=essenceFor(id);assert.equal(e.sections.length,5);const text=e.intro+e.sections.map(x=>x.text).join('');assert.ok(text.length>=650&&text.length<=1000);assert.equal(new Set(e.sections.map(x=>x.text)).size,5);assert.ok(!/[<>]|β|四柱推命|必ず当たる|的中率\d/.test(text));}
 assert.equal(essenceFor('unknown'),null);

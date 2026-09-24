@@ -1,6 +1,6 @@
 // 命紋独自の五行バランス指標。統計的な予測値や古典の確定判定ではない。
-import * as E from './engine.js?v=1.7.0';
-import { groupOf } from './rules.js?v=1.7.0';
+import * as E from './engine.js?v=1.8.0';
+import { groupOf } from './rules.js?v=1.8.0';
 
 const HOUR = 3600000, JST = 9 * HOUR;
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
