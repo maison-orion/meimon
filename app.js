@@ -1,11 +1,11 @@
 // 命紋診断（β版）。生年月日から「得意な動き・力が出やすい環境・負担になりやすい条件」と、これから12か月の読みを出す。
 // 実行時にAIは呼ばない。暦は engine.js、読みの選び方は method.js、文言は rules.js の表から選ぶだけ。
 // 入力は端末の外へ送らない（sessionStorage のみ。タブを閉じると消える）。シェアには生年月日や呼び名を入れない。
-import * as E from "./engine.js?v=1.0.0";
-import * as R from "./rules.js?v=1.0.0";
-import * as M from "./method.js?v=1.0.0";
+import * as E from "./engine.js?v=1.1.0";
+import * as R from "./rules.js?v=1.1.0";
+import * as M from "./method.js?v=1.1.0";
 
-const APP_VERSION = "app-1.0-beta";
+const APP_VERSION = "app-1.1-beta";
 
 // ── 状態（版が変わったら古い保存内容は使わない） ──
 const blank = () => ({ focus: null, draft: {}, input: null, reading: null, reflections: {}, fits: {}, feeling: null, gridView: false, fresh: false });
@@ -13,7 +13,7 @@ let S = load();
 function load() {
   try {
     const s = JSON.parse(sessionStorage.getItem("meimon") || "{}");
-    return s.v === APP_VERSION ? { ...blank(), ...s } : blank();
+    return [APP_VERSION, "app-1.0-beta"].includes(s.v) ? { ...blank(), ...s } : blank();
   } catch { return blank(); }
 }
 function save() { try { sessionStorage.setItem("meimon", JSON.stringify({ ...S, v: APP_VERSION })); } catch { /* 保存できなくても画面は動く */ } }
@@ -60,8 +60,9 @@ function sHome() {
   <section class="hero" aria-labelledby="h">
     <div class="halo"><img class="owl" src="assets/owl-256.png" alt="" width="84" height="84"></div>
     <p class="eyebrow" style="margin-top:16px">${crescent} 命紋診断（めいもんしんだん）</p>
-    <h1 class="display" id="h" tabindex="-1">今の仕事を<br>続けるか、<br>変えるか。</h1>
+    <h1 class="display" id="h" tabindex="-1">いまの悩みを、<br>自分を知る<br>きっかけに。</h1>
     <p class="lead" style="margin-top:12px">生年月日から、あなたの得意な動き、力が出やすい環境、負担になりやすい条件と、これから12か月の読みを出します。</p>
+    <p class="concern-intro">仕事 ／ 恋愛 ／ 人間関係 ／ お金 ／ 自分自身</p>
     <ul class="promise" aria-label="この診断の特徴"><li>無料</li><li>登録なし</li><li>質問は2つ</li><li>入力は端末の中だけで計算</li></ul>
     <div class="actions" style="margin-top:28px">
       <a class="btn" href="#/focus">無料で診断する</a>
@@ -72,9 +73,9 @@ function sHome() {
   <aside class="mini-sample card" aria-label="結果の見本">
     <p class="eyebrow">結果の見本（編集見本）</p>
     <div class="thread" style="margin-top:16px">
-      <div class="knot"><p class="note">相談</p><p>今の仕事を続けるか迷っています。</p></div>
-      <div class="knot answer"><p class="note">あなたの命紋</p><p class="answer-text">決まっている仕事の進め方に、改善の余地を見つける</p></div>
-      <div class="knot step"><p class="note">今月試すこと</p><p>小さな成果物を一つ作り、反応を確かめる</p></div>
+      <div class="knot"><p class="note">相談</p><p>自分の気持ちを整理したい。</p></div>
+      <div class="knot answer"><p class="note">あなたの命紋</p><p class="answer-text">相手の話を理解し、整理してつなぐ</p></div>
+      <div class="knot step"><p class="note">今月試すこと</p><p>気になっていることを一つ書き出す</p></div>
     </div>
   </aside>
 </div>`,
@@ -84,8 +85,8 @@ function sHome() {
 // ═════════ 結果の見本 ═════════
 const SAMPLE_GROUPS = ["make", "make", "deal", "deal", "duty", "duty", "learn", "learn", "self", "self", "make", "make"];
 function sSample() {
-  const c02 = R.COMBOS.find((c) => c.id === "C02");
-  const months = SAMPLE_GROUPS.map((k, i) => ({ m: ((9 + i) % 12) + 1, y: 2026 + Math.floor((9 + i) / 12), g: R.GROUPS[k] }));
+  const c02 = R.COMBOS.find((c) => c.id === "C03");
+  const months = SAMPLE_GROUPS.map((k, i) => ({ m: ((9 + i) % 12) + 1, y: 2026 + Math.floor((9 + i) / 12), g: R.focusGroup(R.GROUPS[k].stars[0], "self") }));
   return {
     bar: bar("plain", { label: "結果の見本" }),
     html: `<p class="sample-flag">結果の見本｜編集見本。特定の人を計算した結果ではありません</p>
@@ -97,9 +98,9 @@ function sSample() {
   </section>
   <section class="card stack-s">${kind("read")}${threeLines(c02)}</section>
   <div class="thread">
-    <div class="knot"><p class="note">今回の相談</p><p class="quote">${R.FOCUS.stay.label}</p></div>
-    <div class="knot answer"><p class="note">相談への回答</p><p class="answer-text">${R.FOCUS.stay.headline}</p><p style="margin-top:8px">${R.FOCUS.stay.answer(c02, R.GROUPS.duty.theme)}</p></div>
-    <div class="knot step"><p class="note">今月の一歩（見本）</p><p>${R.GROUPS.make.action}</p></div>
+    <div class="knot"><p class="note">今回の相談</p><p class="quote">${R.FOCUS.self.label}</p></div>
+    <div class="knot answer"><p class="note">相談への回答</p><p class="answer-text">${R.FOCUS.self.headline}</p><p style="margin-top:8px">${R.FOCUS.self.answer(c02, R.focusGroup("正官", "self").theme)}</p></div>
+    <div class="knot step"><p class="note">今月の一歩（見本）</p><p>${R.focusGroup("食神", "self").action}</p></div>
   </div>
   <section class="section stack-s" aria-labelledby="s-year"><h2 class="h2" id="s-year">これから12か月（見本）</h2>
     <p class="note">2026年10月〜2027年9月。月のテーマは見本の並びで、この年月の運勢を示すものではありません。</p>
@@ -112,15 +113,14 @@ function sSample() {
 
 // ═════════ 質問1：相談テーマ ═════════
 function sFocus() {
+  const categories = ["仕事", "恋愛・パートナー", "家族・人間関係", "お金・暮らし", "自分自身"];
   return {
     bar: bar("flow", { label: "質問 1 / 2" }),
     html: `<form class="stack form-narrow" data-form="focus" novalidate>
-  <h1 class="h1" tabindex="-1">いま、仕事で考えたいことは？</h1>
-  <p>選んだ内容に合わせて、回答と試すことの例を変えます。生まれた日の計算には使いません。</p>
-  <fieldset><legend class="visually-hidden">仕事で考えたいこと</legend>
-    <div class="choices" id="f-focus">${Object.entries(R.FOCUS).map(([k, f]) => radio("focus", k, f.label, S.focus)).join("")}</div>
-    <p class="error" id="e-focus" hidden>考えたいことに近いものを一つ選んでください。</p>
-  </fieldset>
+  <h1 class="h1" tabindex="-1">いま、どんなことを考えたいですか？</h1>
+  <p>一つ選んでください。本質の読みは共通で、選んだ悩みに合わせて回答と12か月のヒントを変えます。</p>
+  <div class="concern-groups" id="f-focus">${categories.map((category) => `<fieldset class="concern-group"><legend>${esc(category)}</legend><div class="choices">${Object.entries(R.FOCUS).filter(([, f]) => f.category === category).map(([k, f]) => radio("focus", k, f.label, S.focus)).join("")}</div></fieldset>`).join("")}</div>
+  <p class="error" id="e-focus" hidden>考えたいことに近いものを一つ選んでください。</p>
   <button class="btn" type="submit">次へ</button>
 </form>`,
   };
@@ -201,7 +201,7 @@ function validateBirth(d) {
   else if (ymKey(y, m) + String(day).padStart(2, "0") > ymKey(t.y, t.m) + String(t.d).padStart(2, "0")) errs.push(["date", "未来の日付になっています。生年月日を確かめてください。", "by"]);
   else {
     const age = t.y - y - (t.m < m || (t.m === m && t.d < day) ? 1 : 0);
-    if (age < 18) errs.push(["date", "命紋診断は、仕事の相談を想定して18歳以上の方を対象にしています。入力した生年月日は保存していません。結果の見本は見られます。", "by", true]);
+    if (age < 18) errs.push(["date", "命紋診断は、18歳以上の方を対象にしています。入力した生年月日は保存していません。結果の見本は見られます。", "by", true]);
   }
   if (d.country === "other" && !d.offset) errs.push(["offset", "生まれた土地の標準時を選んでください。わからない場合は、出生国で「わからない」を選べます。", "offset"]);
   if (!d.timeMode) errs.push(["timeMode", "生まれた時刻について、わからない・記録がある・だいたいわかる のどれかを選んでください。", "f-time"]);
@@ -272,7 +272,7 @@ function buildReading() {
   const period = periodFrom(today());
   const months = E.yearPlan(period.start.y, period.start.m, ds).map((x) => {
     const star = E.TEN_GODS[x.after.god], bstar = E.TEN_GODS[x.before.god], ystar = E.TEN_GODS[x.after.yearGod];
-    const g = R.groupOf(star), bg = R.groupOf(bstar), yg = R.groupOf(ystar);
+    const g = R.focusGroup(star, focus), bg = R.focusGroup(bstar, focus), yg = R.focusGroup(ystar, focus);
     return { key: ymKey(x.y, x.m), y: x.y, m: x.m, last: new Date(x.y, x.m, 0).getDate(), boundary: x.boundary,
       star, theme: g.theme, action: g.action, pillar: x.after.month.label, same: natal.has(star),
       before: { star: bstar, theme: bg.theme, pillar: x.before.month.label },
@@ -365,7 +365,7 @@ function sResult() {
     <section class="knot" aria-labelledby="k1"><h2 class="note" id="k1">今回の相談</h2><p class="quote">${esc(r.consult)}</p></section>
     <section class="knot answer" aria-labelledby="k2"><h2 class="note" id="k2">相談への回答</h2>
       <p class="answer-text">${r.headline}</p><p style="margin-top:8px">${r.answer}</p>
-      <p class="note" style="margin-top:8px">選んだ相談は、回答の例と試すことにだけ使っています。本質の読みには使っていません。</p></section>
+      <p class="note" style="margin-top:8px">選んだ悩みに合わせて、回答と月のテーマの言い方・試すことを変えています。生まれた日時から読む本質は共通です。</p></section>
     <section class="knot step" aria-labelledby="k3"><h2 class="note" id="k3">${ps === "in" ? "今月の一歩" : "開始月の一歩"}（${monthName(cur, true)}）</h2>
       ${kind("hint")}<p>${cur.action}</p>
       <a class="btn secondary" href="#/r/now" style="margin-top:12px">今月の一歩を選ぶ</a></section>
@@ -404,7 +404,7 @@ function sEssence() {
     ? `<section class="card stack-s">${cond ? `<p class="eyebrow">条件付きの候補・組み合わせの読み</p>` : ""}<h3 class="h2" style="font-size:18px">${x.hypothesis}</h3>${kind("read")}<p>${x.detail}</p>
        <details class="why"><summary>読みの理由</summary><p>${x.stars.join("と")}が、年・月・時のうち別の位置にそれぞれあるときに使う、命紋の組み合わせの読みです。特別な才能を示すものではありません。</p></details>${cond ? "" : fitForm("E:" + x.id)}</section>`
     : `<section class="card stack-s">${cond ? `<p class="eyebrow">条件付きの候補・基本の読み</p>` : ""}<p class="note">得意な動き</p><h3 class="h2" style="font-size:18px;margin-top:0">${x.move}</h3>${kind("read")}
-       ${threeLines(x, "", false)}<details class="why"><summary>読みの理由</summary><p>手がかりの星は${x.star}です。星があるだけで性格を決めるものではなく、仕事の条件に置き換えた仮説です。</p></details>${cond ? "" : fitForm("E:" + x.id, x.ask)}</section>`;
+       ${threeLines(x, "", false)}<details class="why"><summary>読みの理由</summary><p>手がかりの星は${x.star}です。星があるだけで性格を決めるものではなく、日常の動き方や環境に置き換えた仮説です。</p></details>${cond ? "" : fitForm("E:" + x.id, x.ask)}</section>`;
   return {
     bar: bar("result"), nav: "ess",
     html: `<div class="stack">
@@ -471,7 +471,7 @@ function sMonth(key) {
   <section class="stack-s" aria-labelledby="link"><h2 class="h2" id="link" style="font-size:18px">相談との接点</h2>${kind("told")}<p>相談：${esc(r.consult)}</p><p class="prose">${f.link(mm.theme)}</p></section>
   <section class="card stack-s">${kind("hint")}<p style="font-weight:600">${mm.action}</p>
     <button class="btn" type="button" data-act="adopt" data-key="${key}">${ref.choice === "adopt" ? "この月の一歩にしました" : "この月の一歩にする"}</button></section>
-  <details class="why"><summary>読みの理由</summary><p>この期間の月の干支は「${mm.pillar}」です。日干「${r.dayStem}」から見た月の干の星は${mm.star}で、命紋では「${mm.theme}」の群として読みます。出来事の予測ではなく、振り返りのテーマです。</p></details>
+  <details class="why"><summary>読みの理由</summary><p>この期間の月の干支は「${mm.pillar}」です。日干「${r.dayStem}」から見た月の干の星は${mm.star}で、命紋では「${R.groupOf(mm.star).theme}」の群にあたります。選んだ悩みに合わせて「${mm.theme}」と表現しています。出来事の予測ではなく、振り返りのテーマです。</p></details>
   <section class="section stack-s" aria-labelledby="fit"><h2 class="h2" id="fit" style="font-size:18px">この月の読みは当てはまりましたか</h2>${fitForm("M:" + key)}</section>
   <nav class="pager" aria-label="前後の月">${prev ? `<a href="#/r/m/${prev.key}">← ${monthName(prev)}</a>` : "<span></span>"}${next ? `<a href="#/r/m/${next.key}">${monthName(next)} →</a>` : "<span></span>"}</nav>
 </div>`,
@@ -590,6 +590,7 @@ function sHow() {
   <h1 class="h1" tabindex="-1">命紋診断について</h1>
   <p>命紋診断は、四柱推命の一部を使う占いです。生まれた日の干と、年・月・時の干の関係を手がかりに、得意な動き、力が出やすい環境、負担になりやすい条件と、これから12か月のテーマを読みます。</p>
   <p class="quiet">${R.DISCLAIMER}</p>
+  <section class="stack-s"><h2 class="h2">選べる悩み</h2><p>仕事、恋愛・パートナー、家族・人間関係、お金・暮らし、自分自身の5つです。同じ出生情報なら、本質の判定は共通。選んだ悩みに合わせて、振り返る視点と毎月のヒントを変えます。</p><p>相手の気持ちや結婚の時期、収入の増減を判定する機能ではありません。</p></section>
   <section class="stack-s"><h2 class="h2">三つの種類を分けて書きます</h2>
     <p>${kind("read")}　生まれた日時から計算した干支を、命紋の規則に沿って読んだものです。</p>
     <p>${kind("told")}　相談として、あなたが選んだ内容です。占いで当てたものではありません。</p>
@@ -599,7 +600,7 @@ function sHow() {
     <p>生年月日などの入力は、このページの中（あなたの端末のブラウザー）だけで計算します。どこにも送らず、このタブを閉じると消えます。</p>
     <p>結果をシェアするときも、送られるのは命紋の読みと、この診断へのリンクだけです。生年月日や呼び名は含みません。</p>
     <p class="note">文字の表示のために、Google Fonts から書体を読み込みます。アクセス解析のための計測は入れていません。</p></section>
-  <section class="stack-s"><h2 class="h2">対象</h2><p>仕事の相談を想定して、18歳以上の方を対象にしています。</p></section>
+  <section class="stack-s"><h2 class="h2">対象</h2><p>18歳以上の方を対象にしています。スマホ・パソコンのブラウザーで、登録せずに使えます。</p></section>
   <a class="btn" href="#/focus">診断する</a>
 </div>`,
   };
