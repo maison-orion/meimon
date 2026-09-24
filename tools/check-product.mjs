@@ -11,3 +11,10 @@ for(const v of ['javascript:alert(1)','https://example.com/a','http://line.me/a'
 assert.equal(lineUrl('https://lin.ee/example'),'https://lin.ee/example');
 assert.equal(lineUrl('https://line.me/R/ti/p/@example'),'https://line.me/R/ti/p/@example');
 console.log(JSON.stringify({result:'ok',essenceTypes:ids.length,sectionsPerType:5,line:'unconfigured-safe-and-valid-url-checks'}));
+
+const {careerFor,CAREERS}=await import('../careers.js');
+for(const id of ids){const c=careerFor(id);assert.ok(c,`職種候補がない: ${id}`);assert.equal(c.jobs.length,3);assert.ok(c.reason.length>20);assert.ok(c.avoid.length>10);assert.ok(c.step.length>20);}
+assert.equal(careerFor('unknown'),null);
+assert.equal(new Set(Object.values(CAREERS).map(c=>c.title)).size,ids.length);
+for(const e of Object.values(ESSENCE))assert.ok(!/読みです|として読みます/.test(e.intro+e.sections.map(x=>x.text).join('')));
+console.log('ok all personality types have reasoned job examples and natural endings');

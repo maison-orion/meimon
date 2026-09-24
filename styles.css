@@ -378,3 +378,23 @@ details.why[open] summary { margin-bottom: 4px; }
 @media(min-width:900px) { .hero .halo { margin-left:0; } .hero-wrap { gap:72px; padding-block:30px 64px; } .mini-sample { padding:32px; } }
 @media(max-width:640px) { .hero .display { font-size:30px; } .hero .halo { width:184px; height:184px; margin-bottom:20px; } .hero .harry { width:180px; height:180px; } .hero-wrap { padding-top:8px; } }
 .reading-chapters li > span { flex:0 0 2ch; white-space:nowrap; }
+/* One reading, optional depth: no persistent tab bar. */
+.reading-back { display:inline-flex; min-height:48px; align-items:center; margin-bottom:16px; font-size:14px; color:var(--sub); }
+.essence-more,.topic-picker,.share-more { border-top:1px solid var(--line); margin-top:26px; }
+.essence-more > summary,.topic-picker > summary,.share-more > summary { padding:20px 4px; cursor:pointer; color:var(--gold-soft); font-weight:600; line-height:1.8; }
+.topic-picker .topics { grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:10px; }
+.answer-card { padding:28px 24px; background:#1d2e43; border-left:3px solid var(--gold); border-radius:0 16px 16px 0; }
+.discover { padding-block:24px; }
+.discover-link { display:block; text-decoration:none; padding:24px 0; border-bottom:1px solid var(--line); }
+.discover-link strong { display:block; font:600 19px/1.7 var(--serif); color:var(--moon); }
+.discover-link span { display:block; font-size:14px; color:var(--sub); margin-top:8px; }
+.discover-link:hover strong { color:var(--gold-soft); }
+.career-jobs { display:grid; gap:10px; }
+.career-jobs li { padding:16px 20px; border:1px solid var(--line); border-radius:12px; color:var(--gold-soft); font-weight:600; }
+.career-reading { padding-block:20px; }
+.resultnav:empty { display:none; }
+@media print { .essence-more { display:block; } .reading-back,.topic-picker,.share-more { display:none; } }
+.life-chart { border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-block:20px; background:#142238; }
+.life-chart .life-chart-scroll { border:0; border-radius:0; margin:0; }
+.life-fixed-axis { background:#142238; padding-left:2px; border-right:1px solid var(--line); }
+#life-year-select { margin-bottom:20px; }
