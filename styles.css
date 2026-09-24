@@ -290,3 +290,11 @@ details.why[open] summary { margin-bottom: 4px; }
 .concern-groups { display: grid; gap: 24px; }
 .concern-group { min-width: 0; }
 .concern-group legend { color: var(--gold-soft); font-weight: 600; margin-bottom: 10px; }
+
+/* 保存済みの生年月日で診断を切り替える */
+.topics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin:0 0 8px; }
+.topics button { min-height:46px; padding:8px 2px; border:1px solid var(--line); border-radius:12px; background:transparent; color:var(--moon); font:inherit; font-size:13px; cursor:pointer; }
+.topics button[aria-pressed="true"] { background:#e8cc8d; color:#142137; border-color:#e8cc8d; font-weight:700; }
+.topic-note { margin-bottom:26px; }
+.storage-warning { margin-bottom:20px; }
+@media print { .topics,.topic-note,.storage-warning { display:none; } }
