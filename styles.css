@@ -284,3 +284,9 @@ details.why[open] summary { margin-bottom: 4px; }
   .print-reading .three { gap: 8pt; margin: 8pt 0; }
   .print-reading .three > div { border-color: #536174; }
 }
+
+/* 悩みの入口：既存の夜空・金色の見出しに揃える。 */
+.concern-intro { margin-top: 16px; color: var(--gold-soft); font-size: 14px; line-height: 1.9; }
+.concern-groups { display: grid; gap: 24px; }
+.concern-group { min-width: 0; }
+.concern-group legend { color: var(--gold-soft); font-weight: 600; margin-bottom: 10px; }
