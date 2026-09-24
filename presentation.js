@@ -1,5 +1,5 @@
 // 言葉だけを更新する。保存済みの判定ID、対象期間、命式、出生情報は再計算しない。
-import { BASICS, COMBOS, FOCUS, focusGroup, RULES_VERSION } from './rules.js?v=1.8.0';
+import { BASICS, COMBOS, FOCUS, focusGroup, RULES_VERSION } from './rules.js?v=1.8.1';
 const lookup = (id) => COMBOS.find(x=>x.id===id) || Object.values(BASICS).find(x=>x.id===id);
 export function refreshReadingCopy(r) {
   if (!r || r.versions?.presentation === 'copy-1.7') return r;

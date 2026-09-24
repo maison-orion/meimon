@@ -1,20 +1,20 @@
-import { moneyFor } from './money.js?v=1.8.0';
-import { careerFor } from './careers.js?v=1.8.0';
+import { moneyFor } from './money.js?v=1.8.1';
+import { careerFor } from './careers.js?v=1.8.1';
 // ハリーの命紋診断。生年月日から「性格の特徴・あなたに合う環境・苦手になりやすいこと」と、これから3か月のアドバイスを出す。
 // 実行時にAIは呼ばない。暦は engine.js、読みの選び方は method.js、文言は rules.js の表から選ぶだけ。
 // 入力は端末の外へ送らない（ブラウザーに保存。設定から削除できる）。シェアには生年月日や呼び名を入れない。
-import * as E from "./engine.js?v=1.8.0";
-import * as R from "./rules.js?v=1.8.0";
-import * as M from "./method.js?v=1.8.0";
-import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.8.0";
+import * as E from "./engine.js?v=1.8.1";
+import * as R from "./rules.js?v=1.8.1";
+import * as M from "./method.js?v=1.8.1";
+import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.8.1";
 
-import { essenceFor } from "./essence.js?v=1.8.0";
-import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.8.0";
-import { lineUrl } from "./service.js?v=1.8.0";
+import { essenceFor } from "./essence.js?v=1.8.1";
+import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.8.1";
+import { lineUrl } from "./service.js?v=1.8.1";
 
-import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.8.0";
+import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.8.1";
 
-const APP_VERSION = "app-1.8";
+const APP_VERSION = "app-1.8.1";
 
 // ── 同じブラウザーに出生情報と診断結果を保存する ──
 const blank = () => ({ focus: null, draft: {}, input: null, reading: null, readings: {}, gridView: false, fresh: false });
