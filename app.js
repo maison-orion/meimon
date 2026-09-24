@@ -1,18 +1,18 @@
-// 命紋診断。生年月日から「性格の特徴・あなたに合う環境・苦手になりやすいこと」と、これから3か月のアドバイスを出す。
+// ハリーの命紋診断。生年月日から「性格の特徴・あなたに合う環境・苦手になりやすいこと」と、これから3か月のアドバイスを出す。
 // 実行時にAIは呼ばない。暦は engine.js、読みの選び方は method.js、文言は rules.js の表から選ぶだけ。
 // 入力は端末の外へ送らない（ブラウザーに保存。設定から削除できる）。シェアには生年月日や呼び名を入れない。
-import * as E from "./engine.js?v=1.4.0";
-import * as R from "./rules.js?v=1.4.0";
-import * as M from "./method.js?v=1.4.0";
-import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.4.0";
+import * as E from "./engine.js?v=1.5.0";
+import * as R from "./rules.js?v=1.5.0";
+import * as M from "./method.js?v=1.5.0";
+import { refreshReadingCopy, monthAdvice } from "./presentation.js?v=1.5.0";
 
-import { essenceFor } from "./essence.js?v=1.4.0";
-import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.4.0";
-import { lineUrl } from "./service.js?v=1.4.0";
+import { essenceFor } from "./essence.js?v=1.5.0";
+import { buildLifeFlow, renderLifeFlow, renderLifeYear } from "./life-flow.js?v=1.5.0";
+import { lineUrl } from "./service.js?v=1.5.0";
 
-import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.4.0";
+import { loadState, saveState, clearState, STORAGE_KEY } from "./storage.js?v=1.5.0";
 
-const APP_VERSION = "app-1.4";
+const APP_VERSION = "app-1.5";
 
 // ── 同じブラウザーに出生情報と診断結果を保存する ──
 const blank = () => ({ focus: null, draft: {}, input: null, reading: null, readings: {}, gridView: false, fresh: false });
@@ -68,10 +68,10 @@ function toast(msg) {
 
 // ── 上部 ──
 function bar(kindOf, opts = {}) {
-  const brand = `<a class="brand" href="#/"><img src="assets/owl-96.png" alt="" width="34" height="34"><span>命紋</span></a>`;
-  if (kindOf === "home") return `<a class="brand" href="#/">命紋</a><span class="spacer"></span><a class="iconlink" href="#/how">この診断について</a>`;
+  const brand = `<a class="brand" href="#/"><img src="assets/harry.png" alt="" width="34" height="34"><span>ハリー<small>命紋診断</small></span></a>`;
+  if (kindOf === "home") return `${brand}<span class="spacer"></span><a class="iconlink" href="#/how">この診断について</a>`;
   if (kindOf === "flow") return `<button class="iconlink" type="button" data-act="back">← 戻る</button><span class="spacer"></span><span class="context">${esc(opts.label || "")}</span>`;
-  if (kindOf === "result") return `${brand}<span class="context">命紋診断</span><span class="spacer"></span><a class="iconlink" href="#/r/settings">設定</a>`;
+  if (kindOf === "result") return `${brand}<span class="spacer"></span><a class="iconlink" href="#/r/settings">設定</a>`;
   return `${brand}<span class="spacer"></span><span class="context">${esc(opts.label || "")}</span>`;
 }
 
@@ -81,10 +81,10 @@ function sHome() {
     bar: bar("home"),
     html: `<div class="hero-wrap">
   <section class="hero" aria-labelledby="h">
-    <div class="halo"><img class="owl" src="assets/owl-256.png" alt="" width="84" height="84"></div>
-    <p class="eyebrow" style="margin-top:16px">${crescent} 命紋診断（めいもんしんだん）</p>
-    <h1 class="display" id="h" tabindex="-1">自分でも気づかない、<br>あなたらしさを。</h1>
-    <p class="lead" style="margin-top:12px">人に見せる顔と、心の内側。繰り返し悩む理由と、力を発揮できる場所。命紋独自の読み方で、あなたの本質と人生の流れをたどります。</p>
+    <div class="halo"><img class="harry" src="assets/harry.png" alt="月を背に帽子に手を添える案内役、ハリー" width="220" height="220"></div>
+    <p class="eyebrow" style="margin-top:16px">ハリーの命紋診断</p>
+    <h1 class="display" id="h" tabindex="-1">自分のことを、<br>少し深く知る。</h1>
+    <p class="lead" style="margin-top:12px">人には見せない気持ち。つい繰り返す行動。あなたらしさと人生の流れを、生まれた日時から読み解きます。</p>
     <p class="concern-intro">本質と性格 ／ 18歳からの流れ ／ これから3か月</p>
     <ul class="promise" aria-label="この診断の特徴"><li>無料</li><li>登録なし</li><li>質問は2つ</li><li>入力は端末の中だけで計算</li></ul>
     <div class="actions" style="margin-top:28px">
@@ -93,13 +93,14 @@ function sHome() {
       <a class="textlink" href="#/sample">結果の見本を見る →</a>
     </div>
   </section>
-  <aside class="mini-sample card" aria-label="結果の見本">
-    <p class="eyebrow">診断で読めること</p>
-    <div class="thread" style="margin-top:16px">
-      <div class="knot"><p class="note">相談</p><p>自分の性格を知りたい。</p></div>
-      <div class="knot answer"><p class="note">あなたの命紋</p><p class="answer-text">人の話をよく聞き、自分なりに考えて受け止める</p></div>
-      <div class="knot step"><p class="note">今月のアドバイス</p><p>人と会う予定の後に、一人で休む時間をつくる</p></div>
-    </div>
+  <aside class="mini-sample card" aria-label="診断で読めること">
+    <p class="eyebrow">この鑑定でわかること</p>
+    <ol class="reading-chapters">
+      <li><span>01</span><div><h2>本質と性格</h2><p>表に出る自分と、心の内側。人との関わり方や、力を発揮しやすい場面。</p></div></li>
+      <li><span>02</span><div><h2>18歳から、今まで</h2><p>年ごとのテーマを図でたどり、自分の歩みと照らし合わせる。</p></div></li>
+      <li><span>03</span><div><h2>これから3か月</h2><p>仕事、恋愛、人間関係、お金。気になる悩みに合わせた過ごし方。</p></div></li>
+    </ol>
+    <p class="guide-sign">あなたを知る時間をご一緒に。<br><span>案内役 ハリー</span></p>
   </aside>
 </div>`,
   };
@@ -225,7 +226,7 @@ function validateBirth(d) {
   else if (ymKey(y, m) + String(day).padStart(2, "0") > ymKey(t.y, t.m) + String(t.d).padStart(2, "0")) errs.push(["date", "未来の日付になっています。生年月日を確かめてください。", "by"]);
   else {
     const age = t.y - y - (t.m < m || (t.m === m && t.d < day) ? 1 : 0);
-    if (age < 18) errs.push(["date", "命紋診断は、18歳以上の方を対象にしています。入力した生年月日は保存していません。結果の見本は見られます。", "by", true]);
+    if (age < 18) errs.push(["date", "ハリーの命紋診断は、18歳以上の方を対象にしています。入力した生年月日は保存していません。結果の見本は見られます。", "by", true]);
   }
   if (d.country === "other" && !d.offset) errs.push(["offset", "生まれた土地の標準時を選んでください。わからない場合は、出生国で「わからない」を選べます。", "offset"]);
   if (!d.timeMode) errs.push(["timeMode", "生まれた時刻について、わからない・記録がある・だいたいわかる のどれかを選んでください。", "f-time"]);
@@ -381,14 +382,14 @@ function essenceHtml(summary, options = {}) {
   return `<div class="essence-reading"><p class="essence-intro">${esc(text.intro)}</p>${text.sections.map(part => `<section class="essence-section"><h2 class="h2">${esc(part.title)}</h2><p class="prose">${esc(part.text)}</p></section>`).join("")}</div>`;
 }
 function lineCard() {
-  return `<section class="line-card stack-s"><p class="eyebrow">命紋の詳しい鑑定</p><h2 class="h2">この先の流れを、<br>もっと詳しく。</h2><p>動き出す時期、人との関わり方、自分に合う選び方。気になるテーマを深く読む鑑定は、LINEでご案内します。</p><a class="btn secondary" href="#/line">詳しい鑑定について</a><p class="note">有料鑑定の内容と料金は、受付時にご案内します。</p></section>`;
+  return `<section class="line-card stack-s"><p class="eyebrow">ハリーの詳しい鑑定</p><h2 class="h2">この先の流れを、<br>もっと詳しく。</h2><p>動き出す時期、人との関わり方、自分に合う選び方。気になるテーマを深く読む鑑定は、LINEでご案内します。</p><a class="btn secondary" href="#/line">詳しい鑑定について</a><p class="note">有料鑑定の内容と料金は、受付時にご案内します。</p></section>`;
 }
 function sResult() {
   const r=S.reading; if (!r) return needReading();
   if (r.split === "day") return {bar:bar("result"),nav:"sum",html:`<div class="stack"><h1 class="h1" tabindex="-1">あなたの本質には、複数の読みがあります</h1><p>生まれた時刻の範囲が日付をまたぐため、ひとつに絞れませんでした。候補ごとの特徴を読めます。</p>${candidatesHtml(r)}<a class="btn" href="#/birth">生まれた時刻を確認する</a></div>`};
   const summary=r.summary;
   return {bar:bar("result"),nav:"sum",html:`<div class="stack">
-    <section class="cover stack-s"><img class="owl" src="assets/owl-96.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の本質</p><h1 class="display cover-title" tabindex="-1">${summary ? esc(summary.move) : "いくつかの顔を持つ、あなたの本質"}</h1><p class="note">命紋独自の読み方で、内面と日常の姿をひもときます。</p></section>
+    <section class="cover stack-s"><img class="harry" src="assets/harry.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の本質</p><h1 class="display cover-title" tabindex="-1">${summary ? esc(summary.move) : "いくつかの顔を持つ、あなたの本質"}</h1><p class="note">命紋独自の読み方で、内面と日常の姿をひもときます。</p></section>
     <nav class="reading-index" aria-label="鑑定の読み順"><a href="#/r/essence">本質と性格</a><a href="#/r/history">18歳からの流れ</a><a href="#/r/future">これから3か月</a></nav>
     ${summary ? essenceHtml(summary) : candidatesHtml(r)}
     <section class="card stack-s"><h2 class="h2">あなたを支える条件</h2>${summary ? threeLines(summary,"",false) : '<p>生まれた時刻によって、合う環境の読みが分かれます。</p>'}<a class="textlink" href="#/r/essence">ほかの一面も読む</a></section>
@@ -453,7 +454,7 @@ function sTopic(key) {
 }
 function sLine() {
   const url=lineUrl();
-  return {bar:bar('plain',{label:'詳しい鑑定'}),html:`<div class="stack"><p class="eyebrow">命紋の詳しい鑑定</p><h1 class="h1" tabindex="-1">自分を知った、その先へ。</h1><p class="lead">これからどう動くか。どんな関係を育てるか。今のあなたの悩みに合わせて、もう一歩深く読み解く鑑定をLINEでご案内します。</p>
+  return {bar:bar('plain',{label:'詳しい鑑定'}),html:`<div class="stack"><p class="eyebrow">ハリーの詳しい鑑定</p><h1 class="h1" tabindex="-1">自分を知った、その先へ。</h1><p class="lead">これからどう動くか。どんな関係を育てるか。今のあなたの悩みに合わせて、もう一歩深く読み解く鑑定をLINEでご案内します。</p>
     <section class="card stack-s"><h2 class="h2">詳しい鑑定でお届けしたいこと</h2><ul class="offer-list"><li>これからの時期ごとの流れと、動き方のヒント</li><li>仕事や恋愛など、気になるテーマを深く読む解説</li><li>あなたの本質に合わせた、迷ったときの選び方</li></ul><p class="note">鑑定の期間、提供内容、料金は受付時にご案内します。現在、このアプリで購入手続きは行いません。</p></section>
     <ol class="line-steps"><li>無料診断で、本質とこれまでの流れを知る</li><li>LINEで詳しい鑑定の案内を受け取る</li><li>内容と料金を確認してから申し込む</li></ol>
     ${url ? `<a class="btn line-button" href="${esc(url)}" target="_blank" rel="noopener noreferrer">LINEで鑑定の案内を受け取る</a><p class="note">この操作で生年月日や診断結果がLINEへ送信されることはありません。</p>` : `<p class="quiet">LINEでのご案内は、受付開始時にこのページでお知らせします。無料の診断結果は引き続きご覧いただけます。</p>`}
@@ -534,7 +535,7 @@ function printReadingHtml(state, withBirth) {
   const birth = withBirth && input ? `<section class="print-block"><h2>入力情報</h2>
     ${input.nick ? `<p>呼び名：${esc(input.nick)}</p>` : ""}<p>生年月日：${esc(input.y)}年${esc(input.m)}月${esc(input.d)}日<br>出生地：${placeText(input)}<br>時刻：${esc(timeText(input))}</p>
     <p>命式（年・月・日・時）：${(r.candidates || []).map(esc).join("／")}</p></section>` : "";
-  return `<h1>命紋診断・鑑定結果</h1><p>本質と性格、これから3か月の鑑定</p>
+  return `<h1>ハリーの命紋診断・鑑定結果</h1><p>本質と性格、これから3か月の鑑定</p>
     <p class="print-note">${esc(R.DISCLAIMER)}</p>
     <section><h2>あなたの性格</h2>${r.summary ? essenceHtml(r.summary) + three(r.summary) : `<p>出生情報の幅によって読みが分かれています。</p>${(r.uniq || []).map((s, i) => `<section class="print-block"><h3>候補${i + 1}</h3>${three(s)}</section>`).join("")}`}</section>
     <section class="print-block"><h2>今回の相談</h2><p>${esc(r.consult)}</p>${r.headline ? `<h3>${esc(r.headline)}</h3><p>${esc(r.answer)}</p>` : ""}<p>相談内容は、本質の計算には使っていません。</p></section>
@@ -551,8 +552,8 @@ function clearPrintReading() {
 window.addEventListener("afterprint", clearPrintReading);
 
 function sHow() {
-  return {bar:bar('plain',{label:'命紋診断について'}),html:`<div class="stack prose"><h1 class="h1" tabindex="-1">命紋は、あなたらしさを読む独自の占いです。</h1><p>生まれた日時を手がかりに、内面の欲求、人との関わり方、力を出しやすい場面を読み解きます。性格とこれまでの流れ、これからの過ごし方を、一つの鑑定としてつなげることを大切にしています。</p>
-    <section class="stack-s"><h2 class="h2">命紋独自の読み方</h2><p>東洋の暦や干支の考え方を参考に、複数の特徴の組み合わせと、日常の場面への読み替えを独自に設計しています。伝統的な暦そのものを新しく発明した占いではありません。</p><p>本質の10種類の読みと6種類の組み合わせをもとに、年や月ごとの5つのテーマを重ねています。本人が選ぶ悩みは、説明する場面に使います。</p></section>
+  return {bar:bar('plain',{label:'ハリーの命紋診断について'}),html:`<div class="stack prose"><h1 class="h1" tabindex="-1">命紋は、あなたらしさを読む独自の占いです。</h1><p>生まれた日時を手がかりに、内面の欲求、人との関わり方、力を出しやすい場面を読み解きます。性格とこれまでの流れ、これからの過ごし方を、一つの鑑定としてつなげることを大切にしています。</p>
+    <section class="stack-s"><h2 class="h2">案内役のハリー</h2><p>ハリーは、自分を知る時間に寄り添う、このサービスのオリジナルキャラクターです。</p></section><section class="stack-s"><h2 class="h2">命紋独自の読み方</h2><p>東洋の暦や干支の考え方を参考に、複数の特徴の組み合わせと、日常の場面への読み替えを独自に設計しています。伝統的な暦そのものを新しく発明した占いではありません。</p><p>本質の10種類の読みと6種類の組み合わせをもとに、年や月ごとの5つのテーマを重ねています。本人が選ぶ悩みは、説明する場面に使います。</p></section>
     <section class="stack-s"><h2 class="h2">無料で読めること</h2><p>本質と性格、18歳から現在までの年ごとの流れ、これから3か月のアドバイスです。仕事、恋愛、人間関係、お金、自分のテーマで読むことができます。</p></section>
     <section class="stack-s"><h2 class="h2">占いの受け止め方</h2><p>${R.DISCLAIMER}</p><p>過去の図は、生まれた日時と各年の暦から読んだテーマです。実際に起きた出来事の記録や、運の良し悪しを測定した数値ではありません。ご自身の経験と照らし合わせてお読みください。</p><p>的中率や、出来事を予測する精度は確認されていません。</p></section>
     <section class="stack-s" id="data"><h2 class="h2">入力情報の扱い</h2><p>生年月日と結果はこのブラウザーに保存し、外部へ送信しません。通常は閉じても残り、設定から削除できます。ブラウザーのデータを消したときやプライベートモードでは残らない場合があります。別の端末とは共有されません。</p><p>シェアには生年月日や呼び名は含みません。LINEへの移動でも出生情報は自動送信しません。</p><p class="note">書体はGoogle Fontsから読み込みます。アクセス解析は入れていません。18歳以上の方が対象です。</p></section><a class="btn" href="#/focus">自分の命紋を読む</a></div>`};
@@ -566,12 +567,12 @@ function sType(id) {
     bar: bar("plain", { label: "シェアされた命紋" }),
     html: `<div class="stack">
   <section class="cover stack-s" aria-labelledby="h">
-    <img class="owl" src="assets/owl-96.png" alt="" width="56" height="56">
+    <img class="harry" src="assets/harry.png" alt="" width="56" height="56">
     <p class="eyebrow">${crescent} シェアされた命紋</p>
     <h1 class="display cover-title" id="h" tabindex="-1">${x.move}</h1>
   </section>
   <section class="card stack-s">${kind("read")}${x.detail ? `<p>${x.detail}</p>` : ""}${threeLines(x, "", false)}</section>
-  <p>これは命紋診断の読みの一つです。生年月日から、あなたの命紋と、これから3か月のアドバイスを無料で出せます。</p>
+  <p>これはハリーの命紋診断の読みの一つです。生年月日から、あなたの命紋と、これから3か月のアドバイスを無料で出せます。</p>
   <a class="btn" href="#/focus">自分の命紋を診断する</a>
   <p class="note">${R.DISCLAIMER}</p>
 </div>`,
@@ -597,47 +598,47 @@ async function makeCard(r) {
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const ctx = cv.getContext("2d");
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#1a2a66"); bg.addColorStop(0.45, "#0b1530"); bg.addColorStop(1, "#060c22");
+  bg.addColorStop(0, "#21324a"); bg.addColorStop(0.45, "#101a30"); bg.addColorStop(1, "#0c1425");
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   const glow = (x, y, rad, color) => { const g = ctx.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); };
-  glow(W * 0.18, H * 0.14, 560, "rgba(107,91,214,.45)"); glow(W * 0.92, H * 0.45, 480, "rgba(47,111,208,.30)"); glow(W * 0.5, H * 1.02, 620, "rgba(232,112,94,.16)");
+  glow(W * 0.18, H * 0.14, 560, "rgba(101,122,142,.12)"); glow(W * 0.92, H * 0.45, 480, "rgba(101,122,142,.08)"); glow(W * 0.5, H * 1.02, 620, "rgba(184,155,98,.06)");
   let seed = 20260924;
   const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-  for (let i = 0; i < 280; i++) {
+  for (let i = 0; i < 55; i++) {
     const a = 0.25 + rnd() * 0.7;
     ctx.fillStyle = rnd() < 0.15 ? `rgba(240,217,155,${a})` : `rgba(226,232,255,${a})`;
     ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() ** 3 * 2.4 + 0.5, 0, Math.PI * 2); ctx.fill();
   }
   const serif = '"Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif', sans = '"Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif';
-  const all = `命紋診断私の命紋は「」${s.move}${s.env}${s.burden}あなたに合う環境苦手になりやすいこと#生年月日から、あなたの性格を読む占い${location.host}`;
+  const all = `ハリーの命紋診断私の命紋は「」${s.move}${s.env}${s.burden}あなたに合う環境苦手になりやすいこと#生年月日から、あなたの性格を読む占い${location.host}`;
   try { await Promise.all([document.fonts.load(`600 72px "Noto Serif JP"`, all), document.fonts.load(`600 36px "Noto Sans JP"`, all), document.fonts.load(`400 26px "Noto Sans JP"`, all)]); } catch { /* 端末の書体で描く */ }
   const cx = 160, cy = 180;
   glow(cx, cy, 190, "rgba(240,217,155,.35)");
   try {
-    const owl = await loadImg("assets/owl-256.png");
-    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 74, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(owl, cx - 74, cy - 74, 148, 148); ctx.restore();
-  } catch { /* フクロウなしで描く */ }
+    const harry = await loadImg("assets/harry.png");
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 74, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(harry, cx - 74, cy - 74, 148, 148); ctx.restore();
+  } catch { /* 案内役の画像なしで描く */ }
   ctx.strokeStyle = "rgba(240,217,155,.55)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, 94, 0, Math.PI * 2); ctx.stroke();
   ctx.textBaseline = "top";
-  ctx.fillStyle = "#d9b56a"; ctx.font = `600 34px ${sans}`; ctx.fillText("命紋診断", 300, 138);
-  ctx.fillStyle = "#aab4cd"; ctx.font = `400 30px ${sans}`; ctx.fillText("私の命紋は", 300, 192);
+  ctx.fillStyle = "#b89b62"; ctx.font = `600 34px ${sans}`; ctx.fillText("ハリーの命紋診断", 300, 138);
+  ctx.fillStyle = "#b3bfcd"; ctx.font = `400 30px ${sans}`; ctx.fillText("私の命紋は", 300, 192);
   let y = 340;
-  ctx.fillStyle = "#f0d99b"; ctx.font = `600 74px ${serif}`;
+  ctx.fillStyle = "#dfc995"; ctx.font = `600 74px ${serif}`;
   ctx.shadowColor = "rgba(217,181,106,.45)"; ctx.shadowBlur = 24;
   for (const line of wrapText(ctx, `「${s.move}」`, W - 170)) { ctx.fillText(line, 80, y); y += 106; }
   ctx.shadowBlur = 0;
   y += 36;
   for (const [label, text] of [["あなたに合う環境", s.env], ["苦手になりやすいこと", s.burden]]) {
     const top = y;
-    ctx.fillStyle = "#d9b56a"; ctx.font = `600 28px ${sans}`; ctx.fillText(label, 108, y); y += 50;
-    ctx.fillStyle = "#ede8dc"; ctx.font = `600 38px ${sans}`;
+    ctx.fillStyle = "#b89b62"; ctx.font = `600 28px ${sans}`; ctx.fillText(label, 108, y); y += 50;
+    ctx.fillStyle = "#e7edf0"; ctx.font = `600 38px ${sans}`;
     for (const line of wrapText(ctx, text, W - 200)) { ctx.fillText(line, 108, y); y += 58; }
     ctx.fillStyle = "rgba(217,181,106,.55)"; ctx.fillRect(80, top + 4, 3, y - top - 14);
     y += 40;
   }
   ctx.fillStyle = "rgba(217,181,106,.35)"; ctx.fillRect(80, H - 190, W - 160, 1);
-  ctx.fillStyle = "#ede8dc"; ctx.font = `600 36px ${serif}`; ctx.fillText("#命紋診断", 80, H - 160);
-  ctx.fillStyle = "#aab4cd"; ctx.font = `400 26px ${sans}`;
+  ctx.fillStyle = "#e7edf0"; ctx.font = `600 36px ${serif}`; ctx.fillText("#ハリーの命紋診断", 80, H - 160);
+  ctx.fillStyle = "#b3bfcd"; ctx.font = `400 26px ${sans}`;
   ctx.fillText("生年月日から、あなたの性格を読む占い", 80, H - 104);
   ctx.fillText(location.host + location.pathname.replace(/index\.html$/, ""), 80, H - 64);
   return cv;
@@ -677,7 +678,7 @@ function render() {
   resultnav.innerHTML = showNav ? [["sum", "#/r", "本質"], ["history", "#/r/history", "これまで"], ["future", "#/r/future", "これから"], ["topic", `#/r/topic/${S.reading.focus}`, "悩み別"]]
     .map(([k, h, l]) => `<a href="${h}" ${view.nav === k ? 'aria-current="page"' : ""}>${l}</a>`).join("") : "";
   const title = topic ? R.FOCUS[topic[1]]?.category : mo ? "月の詳細" : ty ? "シェアされた命紋" : TITLES[path];
-  document.title = title ? `${title}｜命紋診断` : "命紋診断";
+  document.title = title ? `${title}｜ハリーの命紋診断` : "ハリーの命紋診断";
   window.scrollTo(0, 0);
   const h = main.querySelector("[tabindex='-1']");
   if (h && render.count++) h.focus({ preventScroll: true });
@@ -787,7 +788,7 @@ document.addEventListener("click", async (e) => {
   if (act === "grid") { S.gridView = !S.gridView; save(); render(); }
   if (act === "card") shareCard();
   if (act === "share") {
-    try { await navigator.share({ title: "命紋診断", text: shareText(S.reading), url: shareUrl(S.reading) }); }
+    try { await navigator.share({ title: "ハリーの命紋診断", text: shareText(S.reading), url: shareUrl(S.reading) }); }
     catch (err) { if (err?.name !== "AbortError") toast("シェアできませんでした"); }
   }
   if (act === "copy") {

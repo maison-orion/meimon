@@ -1,8 +1,8 @@
-# 命紋診断
+# ハリーの命紋診断
 
 本質と性格、18歳から今までの流れ、これから3か月を読む命紋独自の占いです。
 
-[命紋診断を使う](https://maison-orion.github.io/meimon/)
+[ハリーの命紋診断を使う](https://maison-orion.github.io/meimon/)
 
 ## 無料で読めること
 
