@@ -1,11 +1,12 @@
-// 命紋診断（β版）。生年月日から「得意な動き・力が出やすい環境・負担になりやすい条件」と、これから12か月の読みを出す。
+// 命紋診断（β版）。生年月日から「性格の特徴・あなたに合う環境・苦手になりやすいこと」と、これから12か月のアドバイスを出す。
 // 実行時にAIは呼ばない。暦は engine.js、読みの選び方は method.js、文言は rules.js の表から選ぶだけ。
 // 入力は端末の外へ送らない（sessionStorage のみ。タブを閉じると消える）。シェアには生年月日や呼び名を入れない。
-import * as E from "./engine.js?v=1.1.0";
-import * as R from "./rules.js?v=1.1.0";
-import * as M from "./method.js?v=1.1.0";
+import * as E from "./engine.js?v=1.2.0";
+import * as R from "./rules.js?v=1.2.0";
+import * as M from "./method.js?v=1.2.0";
+import { refreshReadingCopy } from "./presentation.js?v=1.2.0";
 
-const APP_VERSION = "app-1.1-beta";
+const APP_VERSION = "app-1.2-beta";
 
 // ── 状態（版が変わったら古い保存内容は使わない） ──
 const blank = () => ({ focus: null, draft: {}, input: null, reading: null, reflections: {}, fits: {}, feeling: null, gridView: false, fresh: false });
@@ -13,7 +14,7 @@ let S = load();
 function load() {
   try {
     const s = JSON.parse(sessionStorage.getItem("meimon") || "{}");
-    return [APP_VERSION, "app-1.0-beta"].includes(s.v) ? { ...blank(), ...s } : blank();
+    return [APP_VERSION, "app-1.1-beta", "app-1.0-beta"].includes(s.v) ? { ...blank(), ...s } : blank();
   } catch { return blank(); }
 }
 function save() { try { sessionStorage.setItem("meimon", JSON.stringify({ ...S, v: APP_VERSION })); } catch { /* 保存できなくても画面は動く */ } }
@@ -26,7 +27,7 @@ const resultnav = document.getElementById("resultnav");
 const ymKey = (y, m) => `${y}-${String(m).padStart(2, "0")}`;
 const today = () => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }; };
 const crescent = `<svg class="crescent" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.5 3.2A9 9 0 1 0 20.8 16 7.5 7.5 0 0 1 15.5 3.2Z"/></svg>`;
-const kind = (k) => ({ read: `<span class="kind read">占いからの読み</span>`, told: `<span class="kind told">教えてもらったこと</span>`, hint: `<span class="kind hint">試すヒント</span>` })[k];
+const kind = (k) => ({ read: `<span class="kind read">占いの結果</span>`, told: `<span class="kind told">選んだ悩み</span>`, hint: `<span class="kind hint">アドバイス</span>` })[k];
 const radio = (name, val, label, cur) => `<label class="choice"><input type="radio" name="${name}" value="${val}" ${cur === val ? "checked" : ""}><span class="mark" aria-hidden="true"></span><span>${label}</span></label>`;
 
 let chartCache = null;
@@ -60,8 +61,8 @@ function sHome() {
   <section class="hero" aria-labelledby="h">
     <div class="halo"><img class="owl" src="assets/owl-256.png" alt="" width="84" height="84"></div>
     <p class="eyebrow" style="margin-top:16px">${crescent} 命紋診断（めいもんしんだん）</p>
-    <h1 class="display" id="h" tabindex="-1">いまの悩みを、<br>自分を知る<br>きっかけに。</h1>
-    <p class="lead" style="margin-top:12px">生年月日から、あなたの得意な動き、力が出やすい環境、負担になりやすい条件と、これから12か月の読みを出します。</p>
+    <h1 class="display" id="h" tabindex="-1">自分の性格と、<br>いまの悩みを<br>占ってみる。</h1>
+    <p class="lead" style="margin-top:12px">「どんな性格？」「自分には何が合う？」「今月はどう過ごす？」を、生年月日から占います。</p>
     <p class="concern-intro">仕事 ／ 恋愛 ／ 人間関係 ／ お金 ／ 自分自身</p>
     <ul class="promise" aria-label="この診断の特徴"><li>無料</li><li>登録なし</li><li>質問は2つ</li><li>入力は端末の中だけで計算</li></ul>
     <div class="actions" style="margin-top:28px">
@@ -73,9 +74,9 @@ function sHome() {
   <aside class="mini-sample card" aria-label="結果の見本">
     <p class="eyebrow">結果の見本（編集見本）</p>
     <div class="thread" style="margin-top:16px">
-      <div class="knot"><p class="note">相談</p><p>自分の気持ちを整理したい。</p></div>
-      <div class="knot answer"><p class="note">あなたの命紋</p><p class="answer-text">相手の話を理解し、整理してつなぐ</p></div>
-      <div class="knot step"><p class="note">今月試すこと</p><p>気になっていることを一つ書き出す</p></div>
+      <div class="knot"><p class="note">相談</p><p>自分の性格を知りたい。</p></div>
+      <div class="knot answer"><p class="note">あなたの命紋</p><p class="answer-text">人の話をよく聞き、自分なりに考えて受け止める</p></div>
+      <div class="knot step"><p class="note">今月のアドバイス</p><p>人と会う予定の後に、一人で休む時間をつくる</p></div>
     </div>
   </aside>
 </div>`,
@@ -100,7 +101,7 @@ function sSample() {
   <div class="thread">
     <div class="knot"><p class="note">今回の相談</p><p class="quote">${R.FOCUS.self.label}</p></div>
     <div class="knot answer"><p class="note">相談への回答</p><p class="answer-text">${R.FOCUS.self.headline}</p><p style="margin-top:8px">${R.FOCUS.self.answer(c02, R.focusGroup("正官", "self").theme)}</p></div>
-    <div class="knot step"><p class="note">今月の一歩（見本）</p><p>${R.focusGroup("食神", "self").action}</p></div>
+    <div class="knot step"><p class="note">今月の結果（見本）</p><p>${R.focusGroup("食神", "self").action}</p></div>
   </div>
   <section class="section stack-s" aria-labelledby="s-year"><h2 class="h2" id="s-year">これから12か月（見本）</h2>
     <p class="note">2026年10月〜2027年9月。月のテーマは見本の並びで、この年月の運勢を示すものではありません。</p>
@@ -118,7 +119,7 @@ function sFocus() {
     bar: bar("flow", { label: "質問 1 / 2" }),
     html: `<form class="stack form-narrow" data-form="focus" novalidate>
   <h1 class="h1" tabindex="-1">いま、どんなことを考えたいですか？</h1>
-  <p>一つ選んでください。本質の読みは共通で、選んだ悩みに合わせて回答と12か月のヒントを変えます。</p>
+  <p>一つ選んでください。性格を占い、選んだ悩みについてのアドバイスと、12か月の過ごし方をお伝えします。</p>
   <div class="concern-groups" id="f-focus">${categories.map((category) => `<fieldset class="concern-group"><legend>${esc(category)}</legend><div class="choices">${Object.entries(R.FOCUS).filter(([, f]) => f.category === category).map(([k, f]) => radio("focus", k, f.label, S.focus)).join("")}</div></fieldset>`).join("")}</div>
   <p class="error" id="e-focus" hidden>考えたいことに近いものを一つ選んでください。</p>
   <button class="btn" type="submit">次へ</button>
@@ -234,15 +235,15 @@ function starLine(c) {
 }
 function reasonText(c, s) {
   const how = s.source.startsWith("C")
-    ? `${s.stars.join("と")}が別の位置にそろうため、命紋の組み合わせの読みを使っています。`
+    ? `${s.stars.join("と")}が別の位置にそろうため、命紋の特徴の組み合わせを使っています。`
     : `月の干の星（${s.stars[0]}）を第一の手がかりとして使っています。`;
   return `四柱推命の一部を使う限定モデルで読んでいます。生まれた日の干（日干「${E.STEMS[c.candidates[0].day.stem]}」）を自分側とし、${starLine(c)}です。${how}${c.candidates.length > 1 ? "時刻の候補によって変わる読みは、条件付きの候補として分けています。" : ""}`;
 }
 function threeLines(s, extra = "", withMove = true) {
   return `<dl class="three">
-    ${withMove ? `<div><dt>得意な動き</dt><dd>${s.move}</dd></div>` : ""}
-    <div><dt>力が出やすい環境</dt><dd>${s.env}</dd></div>
-    <div><dt>負担になりやすい条件</dt><dd>${s.burden}</dd></div>${extra}
+    ${withMove ? `<div><dt>性格の特徴</dt><dd>${s.move}</dd></div>` : ""}
+    <div><dt>あなたに合う環境</dt><dd>${s.env}</dd></div>
+    <div><dt>苦手になりやすいこと</dt><dd>${s.burden}</dd></div>${extra}
   </dl>`;
 }
 function candidatesHtml(r) {
@@ -274,7 +275,7 @@ function buildReading() {
     const star = E.TEN_GODS[x.after.god], bstar = E.TEN_GODS[x.before.god], ystar = E.TEN_GODS[x.after.yearGod];
     const g = R.focusGroup(star, focus), bg = R.focusGroup(bstar, focus), yg = R.focusGroup(ystar, focus);
     return { key: ymKey(x.y, x.m), y: x.y, m: x.m, last: new Date(x.y, x.m, 0).getDate(), boundary: x.boundary,
-      star, theme: g.theme, action: g.action, pillar: x.after.month.label, same: natal.has(star),
+      star, theme: g.theme, description: g.description, action: g.action, pillar: x.after.month.label, same: natal.has(star),
       before: { star: bstar, theme: bg.theme, pillar: x.before.month.label },
       year: { star: ystar, theme: yg.theme, pillar: x.after.year.label } };
   });
@@ -303,7 +304,7 @@ function monthState(mm) { const t = today(), now = ymKey(t.y, t.m); return mm.ke
 const monthName = (mm, full) => (full || mm.m === 1 ? `${mm.y}年${mm.m}月` : `${mm.m}月`);
 function currentMonth(r) { return periodState(r) === "in" ? r.months.find((mm) => monthState(mm) === "now") : r.months[0]; }
 function yearsText(r) {
-  return r.years.map((y) => `${y.from ? `${y.from.y}年${y.from.m}月${y.from.d}日ごろ（立春）から` : "期間のはじめ"}：「${y.theme}」（${y.pillar}の年・${y.star}）`).join("<br>");
+  return r.years.map((y) => `${y.from ? `${y.from.y}年${y.from.m}月${y.from.d}日ごろから` : "この期間は"}：「${y.theme}」`).join("<br>");
 }
 function needReading(allowSplit = false) {
   if (!S.reading) return redirect("#/focus");
@@ -331,104 +332,38 @@ function shareBlock(r) {
 
 function sResult() {
   const r = S.reading; if (!r) return needReading();
-  const fresh = S.fresh; if (fresh) { S.fresh = false; save(); }
-  if (r.split === "day") {
-    return {
-      bar: bar("plain", { label: "診断結果" }),
-      html: `<div class="stack">
-  <section class="cover stack-s ${fresh ? "reveal" : ""}" aria-labelledby="h"><p class="eyebrow">${crescent} ${nick()}の命紋</p>
-    <h1 class="h1" id="h" tabindex="-1">生まれた日の読みが、候補によって分かれます</h1>
-    <p>入力された時刻の幅が日付をまたいでいるため、生まれた日の干が一つに決まりません。12か月の読みは、生まれた日の干が決まってから出します。</p></section>
-  <section class="stack-s">${r.uniq.map((x, i) => `<section class="card stack-s"><h2 class="h2">候補${i + 1}：${x.move}</h2>${kind("read")}${threeLines(x, "", false)}</section>`).join("")}</section>
-  <a class="btn" href="#/birth">時刻の幅を直す</a>
-</div>`,
-    };
-  }
-  const s = r.summary;
-  const cur = currentMonth(r);
-  const ps = periodState(r);
-  const idx = r.months.indexOf(cur);
-  const preview = r.months.slice(idx, idx + 3);
-  return {
-    bar: bar("result"), nav: "sum",
-    html: `<div class="stack">
-  <section class="cover stack-s ${fresh ? "reveal" : ""}" aria-labelledby="h">
-    <img class="owl" src="assets/owl-96.png" alt="" width="56" height="56">
-    <p class="eyebrow">${crescent} ${nick()}の命紋</p>
-    <h1 class="display cover-title" id="h" tabindex="-1">${s ? s.move : "読みが二つ以上に分かれました"}</h1>
-    <p class="note">${r.period.label}の読み・β版</p>
-  </section>
-  ${s ? `<section class="card stack-s">${kind("read")}${threeLines(s)}
-    <details class="why"><summary>この読みの理由</summary><p>${r.reason}</p><p class="note">${R.LIMITED}</p></details></section>` : candidatesHtml(r)}
-  ${s ? shareBlock(r) : ""}
-  <div class="thread section">
-    <section class="knot" aria-labelledby="k1"><h2 class="note" id="k1">今回の相談</h2><p class="quote">${esc(r.consult)}</p></section>
-    <section class="knot answer" aria-labelledby="k2"><h2 class="note" id="k2">相談への回答</h2>
-      <p class="answer-text">${r.headline}</p><p style="margin-top:8px">${r.answer}</p>
-      <p class="note" style="margin-top:8px">選んだ悩みに合わせて、回答と月のテーマの言い方・試すことを変えています。生まれた日時から読む本質は共通です。</p></section>
-    <section class="knot step" aria-labelledby="k3"><h2 class="note" id="k3">${ps === "in" ? "今月の一歩" : "開始月の一歩"}（${monthName(cur, true)}）</h2>
-      ${kind("hint")}<p>${cur.action}</p>
-      <a class="btn secondary" href="#/r/now" style="margin-top:12px">今月の一歩を選ぶ</a></section>
-  </div>
-  <fieldset class="section"><legend>この結果は、今の自分に当てはまりますか（任意）</legend>
-    <div class="choices inline">${Object.entries(R.FIT).map(([k, l]) => radio("feeling", k, l, S.feeling)).join("")}</div>
-    <div id="offhelp" class="quiet stack-s" style="margin-top:12px" ${["no", "part"].includes(S.feeling) ? "" : "hidden"}>
-      <p>回答はそのまま記録します。読みの本文は書き換えません。時刻がわかる場合は、入れ直すと読みが変わることがあります。</p>
-      <div class="linkrow"><a class="textlink" href="#/birth">入力を直す</a><a class="textlink" href="#/r/essence">ほかの読みも見る</a></div>
-    </div>
-  </fieldset>
-  <section class="section stack-s" aria-labelledby="yt"><h2 class="h2" id="yt">これから12か月</h2>
-    <p class="note">通年の背景：${r.years.map((y) => `「${y.theme}」`).join("→")}</p>
-    <ol class="cal">${calList(r, preview)}</ol>
-    <a class="btn secondary" href="#/r/year">12か月すべて見る</a></section>
-  <div class="linkrow noprint"><a class="textlink" href="#/r/essence">本質を詳しく読む</a><a class="textlink" href="#/birth">入力を直す</a><a class="textlink" href="#/r/settings">計算条件とPDF保存</a></div>
-</div>`,
-  };
-}
-
-// 一致の記録（当てはまる／一部だけ／当てはまらない／まだ分からない＋具体例）。本文は書き換えない
-function fitForm(id, question) {
-  const f = (S.fits || {})[id] || {};
-  return `<form class="fit stack-s" data-form="fit" data-id="${id}" novalidate>
-    ${question ? `<p class="note">確かめる問い：${question}</p>` : ""}
-    <fieldset><legend class="visually-hidden">当てはまるか</legend><div class="choices inline">${Object.entries(R.FIT).map(([k, l]) => radio("fit", k, l, f.fit)).join("")}</div></fieldset>
-    <label class="field"><span class="label">具体例（任意）</span><textarea class="textarea" name="example" maxlength="200" style="min-height:80px">${esc(f.example || "")}</textarea></label>
-    <button class="btn secondary" type="submit">記録する</button></form>`;
+  if (r.split === "day") return { bar: bar("plain"), html: `<div class="stack"><h1 class="h1" tabindex="-1">生まれた日を一つに絞れませんでした</h1><p>入力した時刻が日付をまたぐため、性格の結果が複数あります。12か月の結果は、生まれた日が決まってから表示します。</p>${candidatesHtml(r)}<a class="btn" href="#/birth">入力を確認する</a></div>` };
+  const s = r.summary, cur = currentMonth(r);
+  S.fresh = false;
+  return { bar: bar("result"), nav: "sum", html: `<div class="stack">
+    <section class="cover stack-s"><img class="owl" src="assets/owl-96.png" alt="" width="56" height="56"><p class="eyebrow">${nick()}の診断結果</p><h1 class="display cover-title" tabindex="-1">${s ? s.move : "性格の結果が複数あります"}</h1><p class="note">${r.period.label}・β版</p></section>
+    ${s ? `<section class="card stack-s"><h2 class="h2">あなたはこんな人</h2>${threeLines(s)}<a class="textlink" href="#/r/essence">性格をもっと詳しく見る</a></section>` : candidatesHtml(r)}
+    <section class="section stack-s"><p class="eyebrow">${esc(r.consult)}</p><h2 class="h2">${r.headline}</h2><p class="prose">${r.answer}</p></section>
+    <section class="card stack-s"><p class="eyebrow">${monthName(cur,true)}のアドバイス</p><h2 class="h2">${cur.theme}</h2><p>${cur.description || ''}</p><p><strong>おすすめの過ごし方</strong><br>${cur.action}</p><a class="textlink" href="#/r/now">今月の結果を詳しく見る</a></section>
+    <section class="section stack-s"><h2 class="h2">これから12か月</h2><ol class="cal">${calList(r,r.months.slice(r.months.indexOf(cur),r.months.indexOf(cur)+3))}</ol><a class="btn secondary" href="#/r/year">12か月すべて見る</a></section>
+    ${s ? shareBlock(r) : ''}
+    <div class="linkrow"><a class="textlink" href="#/focus">別の悩みで診断する</a><a class="textlink" href="#/r/settings">結果をPDFで保存する</a></div>
+    <details class="why"><summary>占いの方法と注意点</summary><p>${r.reason || '出生時刻によって結果が変わるため、複数の結果を表示しています。'}</p><p>${R.LIMITED}</p></details>
+  </div>` };
 }
 
 function sEssence() {
-  const stop = needReading(); if (stop) return stop;
-  const r = S.reading, s = r.summary;
-  const cur = currentMonth(r);
-  const card = (x, cond) => x.id.startsWith("C")
-    ? `<section class="card stack-s">${cond ? `<p class="eyebrow">条件付きの候補・組み合わせの読み</p>` : ""}<h3 class="h2" style="font-size:18px">${x.hypothesis}</h3>${kind("read")}<p>${x.detail}</p>
-       <details class="why"><summary>読みの理由</summary><p>${x.stars.join("と")}が、年・月・時のうち別の位置にそれぞれあるときに使う、命紋の組み合わせの読みです。特別な才能を示すものではありません。</p></details>${cond ? "" : fitForm("E:" + x.id)}</section>`
-    : `<section class="card stack-s">${cond ? `<p class="eyebrow">条件付きの候補・基本の読み</p>` : ""}<p class="note">得意な動き</p><h3 class="h2" style="font-size:18px;margin-top:0">${x.move}</h3>${kind("read")}
-       ${threeLines(x, "", false)}<details class="why"><summary>読みの理由</summary><p>手がかりの星は${x.star}です。星があるだけで性格を決めるものではなく、日常の動き方や環境に置き換えた仮説です。</p></details>${cond ? "" : fitForm("E:" + x.id, x.ask)}</section>`;
-  return {
-    bar: bar("result"), nav: "ess",
-    html: `<div class="stack">
-  <p class="eyebrow">${crescent} 本質</p><h1 class="h1" tabindex="-1">${nick()}の動き方</h1>
-  ${s ? `<section class="card stack-s">${kind("read")}${threeLines(s, `<div><dt>今月試すこと</dt><dd>${cur.action}</dd></div>`)}</section>
-  <details class="why"><summary>読みの理由を見る</summary><div class="stack-s">
-    ${kind("read")}<p>${r.reason}</p>
-    ${kind("told")}<p>相談：${esc(r.consult)}。相談の内容は本質の読みには使っていません。</p>
-    ${kind("hint")}<p>「今月試すこと」は、今月の読み（${cur.theme}）からの提案です。</p>
-    <p class="note">${R.LIMITED}</p></div></details>` : candidatesHtml(r)}
-  ${r.combos.length ? `<h2 class="h2 section">組み合わせの読み</h2>${r.combos.map((x) => card(x)).join("")}` : ""}
-  ${r.basics.length ? `<h2 class="h2 section">基本の読み</h2>
-  <p class="note">手がかりにした星ごとの読みです。当てはまるかを記録しても、この結果の本文は書き換えません。</p>
-  ${r.basics.map((x) => card(x)).join("")}` : ""}
-  ${r.conditional.length ? `<h2 class="h2 section">時刻によっては当てはまる読み</h2><p class="note">入力された時刻の幅のうち、一部でだけ成り立つ読みです。共通の本質としては扱いません。</p>${r.conditional.map((x) => card(x, true)).join("")}` : ""}
-</div>`,
-  };
+  const stop=needReading(); if(stop)return stop;
+  const r=S.reading;
+  const card=(x)=>`<section class="card stack-s"><h3 class="h2">${x.move}</h3>${x.detail ? `<p>${x.detail}</p>` : ''}${threeLines(x,'',false)}</section>`;
+  return {bar:bar("result"),nav:"ess",html:`<div class="stack"><p class="eyebrow">性格の診断</p><h1 class="h1" tabindex="-1">${nick()}はどんな人？</h1>
+    ${r.summary ? `<section class="card">${threeLines(r.summary)}</section>` : candidatesHtml(r)}
+    ${r.combos.length ? `<h2 class="h2">特に目立つ特徴</h2>${r.combos.map(card).join('')}` : ''}
+    ${r.basics.length ? `<h2 class="h2">こんな一面もあります</h2>${r.basics.map(card).join('')}` : ''}
+    ${r.conditional.length ? `<details class="why"><summary>出生時刻によって変わる特徴</summary><p>次の特徴は、入力した時刻の範囲の一部でだけ当てはまる結果です。</p>${r.conditional.map(card).join('')}</details>` : ''}
+    <details class="why"><summary>この結果の理由</summary><p>${r.reason || '出生時刻によって結果が分かれています。'}</p><p>${R.LIMITED}</p></details></div>`};
 }
 
 function calList(r, list = r.months) {
   return list.map((mm) => {
     const st = monthState(mm);
     const tag = st === "now" ? "今月" : st === "past" ? "過去" : "";
-    return `<li class="${st}"><a class="cal-row" href="#/r/m/${mm.key}" ${st === "now" ? 'aria-current="date"' : ""}><span class="mon">${mm.m}月<small>${mm.y}年</small></span><span class="theme">${mm.theme}</span>${tag ? `<span class="tag">${tag}</span>` : "<span></span>"}<span class="act">${mm.action}<br><small>${mm.boundary.day}日ごろまでは「${mm.before.theme}」</small></span></a></li>`;
+    return `<li class="${st}"><a class="cal-row" href="#/r/m/${mm.key}" ${st === "now" ? 'aria-current="date"' : ""}><span class="mon">${mm.m}月<small>${mm.y}年</small></span><span class="theme">${mm.theme}</span>${tag ? `<span class="tag">${tag}</span>` : "<span></span>"}<span class="act">${mm.action}</span></a></li>`;
   }).join("");
 }
 function sYear() {
@@ -438,9 +373,9 @@ function sYear() {
     bar: bar("result"), nav: "year",
     html: `<div class="stack">
   <p class="eyebrow">${crescent} ${r.period.label}</p>
-  <h1 class="h1" tabindex="-1">12か月の読み</h1>
-  <section class="quiet stack-s"><p><strong>通年の背景</strong></p><p>${yearsText(r)}</p></section>
-  <p class="note">月の読みは、その期間を振り返るテーマです。暦の月は節入りの日で切り替わるため、各月の初めの数日は前の月の読みが続きます。色や点数で良し悪しは表しません。</p>
+  <h1 class="h1" tabindex="-1">12か月のアドバイス</h1>
+  <section class="quiet stack-s"><p><strong>1年を通して大切にしたいこと</strong></p><p>${yearsText(r)}</p></section>
+  <p class="note">各月の見出しを押すと、詳しいアドバイスが読めます。月の切り替わりの日付は、詳細の中で確認できます。</p>
   <div class="linkrow"><button class="iconlink viewtoggle" type="button" data-act="grid" aria-pressed="${S.gridView}">${S.gridView ? "縦の一覧で見る" : "3列の見取り図で見る"}</button></div>
   <ol class="cal ${S.gridView ? "grid" : ""}">${calList(r)}</ol>
 </div>`,
@@ -448,64 +383,22 @@ function sYear() {
 }
 
 function sMonth(key) {
-  const stop = needReading(); if (stop) return stop;
-  const r = S.reading;
-  const i = r.months.findIndex((mm) => mm.key === key);
-  if (i < 0) return redirect("#/r/year");
-  const mm = r.months[i], prev = r.months[i - 1], next = r.months[i + 1];
-  const f = R.FOCUS[r.focus];
-  const ref = S.reflections[key] || {};
-  const st = monthState(mm);
-  const hm = `${mm.boundary.day}日${mm.boundary.hour}時ごろ`;
-  return {
-    bar: `<a class="iconlink" href="#/r/year">← 12か月へ</a><span class="spacer"></span><span class="context">${monthName(mm, true)}</span>`, nav: "year",
-    html: `<div class="stack">
-  <p class="eyebrow">${monthName(mm, true)}${st === "past" ? "（過去の月）" : st === "now" ? "（今月）" : ""}</p>
-  <h1 class="h1" tabindex="-1">${mm.theme}</h1>
-  ${st === "now" && i === 0 ? `<p class="note">今日（${today().d}日）より前の日は、過去として扱います。</p>` : ""}
-  <table class="table"><caption class="visually-hidden">この月の区切り</caption><tbody>
-    <tr><th scope="row">${mm.m}月1日〜${hm}</th><td>前の月の読み「${mm.before.theme}」</td></tr>
-    <tr><th scope="row">${hm}〜${mm.m}月${mm.last}日</th><td><strong>「${mm.theme}」</strong></td></tr></tbody></table>
-  <section class="stack-s">${kind("read")}<p class="prose">${R.MONTH_READ({ theme: mm.theme })}</p>${mm.same ? `<p class="note">${R.SAME_STAR_NOTE}</p>` : ""}
-    <p class="note">通年の背景は「${mm.year.theme}」です。月の読みとは別のものとして並べています。</p></section>
-  <section class="stack-s" aria-labelledby="link"><h2 class="h2" id="link" style="font-size:18px">相談との接点</h2>${kind("told")}<p>相談：${esc(r.consult)}</p><p class="prose">${f.link(mm.theme)}</p></section>
-  <section class="card stack-s">${kind("hint")}<p style="font-weight:600">${mm.action}</p>
-    <button class="btn" type="button" data-act="adopt" data-key="${key}">${ref.choice === "adopt" ? "この月の一歩にしました" : "この月の一歩にする"}</button></section>
-  <details class="why"><summary>読みの理由</summary><p>この期間の月の干支は「${mm.pillar}」です。日干「${r.dayStem}」から見た月の干の星は${mm.star}で、命紋では「${R.groupOf(mm.star).theme}」の群にあたります。選んだ悩みに合わせて「${mm.theme}」と表現しています。出来事の予測ではなく、振り返りのテーマです。</p></details>
-  <section class="section stack-s" aria-labelledby="fit"><h2 class="h2" id="fit" style="font-size:18px">この月の読みは当てはまりましたか</h2>${fitForm("M:" + key)}</section>
-  <nav class="pager" aria-label="前後の月">${prev ? `<a href="#/r/m/${prev.key}">← ${monthName(prev)}</a>` : "<span></span>"}${next ? `<a href="#/r/m/${next.key}">${monthName(next)} →</a>` : "<span></span>"}</nav>
-</div>`,
-  };
+  const stop=needReading(); if(stop)return stop;
+  const r=S.reading, i=r.months.findIndex(m=>m.key===key);
+  if(i<0)return redirect('#/r/year');
+  const m=r.months[i], f=R.FOCUS[r.focus], previous=r.months[i-1], next=r.months[i+1];
+  return {bar:bar('result'),nav:'year',html:`<div class="stack"><p class="eyebrow">${monthName(m,true)}${monthState(m)==='past'?'（過去の月）':''}</p>
+    <h1 class="h1" tabindex="-1">${m.theme}</h1><p class="prose">${m.description || ''}</p>
+    <section class="card stack-s"><h2 class="h2">おすすめの過ごし方</h2><p>${m.action}</p></section>
+    <section class="stack-s"><h2 class="h2">${esc(f.category)}の悩みについて</h2><p>${f.link(m.theme)}</p></section>
+    <details class="why"><summary>月の切り替わりと占いの理由</summary><p>この占いでは、月の結果は毎月1日ではなく、季節の区切りの日に変わります。</p><p>${m.m}月${m.boundary.day}日${m.boundary.hour}時ごろまでは「${m.before.theme}」、それ以降は「${m.theme}」です（日本時間）。</p><p>生まれた日と、この月の干支の組み合わせから読んでいます。出来事の予測ではなく、占いからのアドバイスです。</p></details>
+    <nav class="pager" aria-label="前後の月">${previous?`<a href="#/r/m/${previous.key}">← ${monthName(previous)}</a>`:'<span></span>'}${next?`<a href="#/r/m/${next.key}">${monthName(next)} →</a>`:'<span></span>'}</nav><a class="textlink" href="#/r/year">12か月の一覧に戻る</a></div>`};
 }
-
 function sNow() {
-  const stop = needReading(); if (stop) return stop;
-  const r = S.reading;
-  const ps = periodState(r);
-  if (ps !== "in") {
-    return { bar: bar("result"), nav: "now", html: `<div class="stack"><h1 class="h1" tabindex="-1">${ps === "before" ? "まだ対象期間が始まっていません" : "対象期間は終わりました"}</h1>
-      <p>今日の日付は、この結果の対象期間（${r.period.label}）の${ps === "before" ? "前" : "後"}です。もう一度診断すると、今月からの12か月を読めます。</p>
-      <a class="btn" href="#/focus">もう一度診断する</a><a class="btn secondary" href="#/r/year">月を選ぶ</a></div>` };
-  }
-  const mm = r.months.find((x) => monthState(x) === "now");
-  const ref = S.reflections[mm.key] || {};
-  return {
-    bar: bar("result"), nav: "now",
-    html: `<form class="stack" data-form="reflect" data-key="${mm.key}" novalidate>
-  <p class="eyebrow">${monthName(mm, true)}</p><h1 class="h1" tabindex="-1">今月の一歩</h1>
-  <p>今月の読み：<strong>${mm.theme}</strong></p>
-  <fieldset><legend>今月、試すこと</legend><div class="choices">
-    ${radio("choice", "adopt", `提案を採用する：${mm.action}`, ref.choice)}${radio("choice", "custom", "自分の言葉に書き換える", ref.choice)}${radio("choice", "skip", "この月は選ばない", ref.choice)}</div></fieldset>
-  <label class="field" for="custom" id="w-custom" ${ref.choice === "custom" ? "" : "hidden"}><span class="label">自分で決めた一歩</span><span class="why">書き換えた一歩は、占いの読みとしては表示しません。</span>
-    <input class="input" id="custom" name="custom" maxlength="60" value="${esc(ref.custom || "")}"></label>
-  <fieldset class="section"><legend>振り返り（任意）</legend>
-    <p class="note" style="margin-bottom:8px">試してみて、どう感じましたか。まだ試していなくても大丈夫です。</p>
-    <div class="choices inline">${radio("did", "done", "試した", ref.did)}${radio("did", "notyet", "まだ", ref.did)}${radio("did", "pass", "今回は見送った", ref.did)}</div></fieldset>
-  <label class="field" for="memo"><span class="label">わかったことを一言（任意）</span><textarea class="textarea" id="memo" name="memo" maxlength="200" style="min-height:96px">${esc(ref.memo || "")}</textarea></label>
-  <button class="btn" type="submit">振り返りを保存する</button>
-  <p class="note">読みが当てはまったかは、<a href="#/r/m/${mm.key}">今月の読み</a>の下で記録できます。保存は、このタブを閉じるまでです。手元に残す場合はPDFで保存してください。</p>
-</form>`,
-  };
+  const stop=needReading(); if(stop)return stop;
+  const r=S.reading;
+  if(periodState(r)!=='in')return {bar:bar('result'),nav:'now',html:`<div class="stack"><h1 class="h1" tabindex="-1">今月は診断の対象期間外です</h1><p>保存した結果は${r.period.label}です。</p><a class="btn" href="#/focus">もう一度診断する</a><a href="#/r/year">保存した12か月を見る</a></div>`};
+  return {...sMonth(currentMonth(r).key),nav:'now'};
 }
 
 function sSettings() {
@@ -534,7 +427,7 @@ function sSettings() {
     </dl>
     <p class="note">節入りの時刻は計算値です。国立天文台の2026年の値と比べた差は最大14分で、境目の前後30分に生まれた場合は候補を並べます。</p></section>
   <section class="card stack-s" aria-labelledby="del"><h2 class="h2" id="del">入力と結果の削除</h2>
-    <p>生年月日、結果、振り返りを、この端末のブラウザーから削除します。タブを閉じても消えます。</p>
+    <p>生年月日と診断結果を、この端末のブラウザーから削除します。タブを閉じても消えます。</p>
     <div id="delconfirm" class="errsummary stack-s" hidden><p>削除すると元に戻せません。削除しますか。</p><button class="btn" type="button" data-act="delete">削除する</button><button class="btn secondary" type="button" data-act="delcancel">やめる</button></div>
     <button class="btn secondary" type="button" data-act="delask" id="delbtn">すべて削除する</button></section>
 </div>`,
@@ -544,35 +437,21 @@ function sSettings() {
 // 設定画面ではなく、保存済みの鑑定と記録を印刷する。入力情報は明示的に選んだ場合だけ含める。
 function printReadingHtml(state, withBirth) {
   const r = state.reading, input = state.input;
-  const three = (s) => `<dl class="three"><div><dt>得意な動き</dt><dd>${esc(s.move)}</dd></div><div><dt>力が出やすい環境</dt><dd>${esc(s.env)}</dd></div><div><dt>負担になりやすい条件</dt><dd>${esc(s.burden)}</dd></div></dl>`;
+  const three = (s) => `<dl class="three"><div><dt>性格の特徴</dt><dd>${esc(s.move)}</dd></div><div><dt>あなたに合う環境</dt><dd>${esc(s.env)}</dd></div><div><dt>苦手になりやすいこと</dt><dd>${esc(s.burden)}</dd></div></dl>`;
   const item = (x) => `<section class="print-block"><h3>${esc(x.id)}：${esc(x.move)}</h3>${three(x)}${x.detail ? `<p>${esc(x.detail)}</p>` : ""}</section>`;
   const sections = (title, xs) => xs?.length ? `<section><h2>${title}</h2>${xs.map(item).join("")}</section>` : "";
-  const fitLabel = (id) => {
-    if (id.startsWith("M:")) return `${id.slice(2)}の読み`;
-    const rule = typeOf(id.replace(/^E:/, ""));
-    return rule ? `${rule.id}：${rule.move}` : id;
-  };
-  const fitRows = Object.entries(state.fits || {}).map(([id, f]) => `<section class="print-block"><h3>${esc(fitLabel(id))}</h3><p>${esc(R.FIT[f.fit] || "未回答")}</p>${f.example ? `<p class="print-note">具体例：${esc(f.example)}</p>` : ""}</section>`).join("");
-  const reflections = Object.entries(state.reflections || {}).map(([key, ref]) => {
-    const month = r.months?.find((m) => m.key === key);
-    const choice = ref.choice === "adopt" ? `提案を採用：${month?.action || ""}` : ref.choice === "custom" ? `自分で決めた一歩：${ref.custom || ""}` : ref.choice === "skip" ? "この月は選ばない" : "一歩は未選択";
-    const did = { done: "試した", notyet: "まだ", pass: "今回は見送った" }[ref.did];
-    return `<section class="print-block"><h3>${esc(key)}</h3><p class="print-note">${esc(choice)}</p>${did ? `<p>振り返り：${esc(did)}</p>` : ""}${ref.memo ? `<p class="print-note">わかったこと：${esc(ref.memo)}</p>` : ""}</section>`;
-  }).join("");
   const months = (r.months || []).map((m) => `<section class="print-block"><h3>${esc(m.y)}年${esc(m.m)}月：${esc(m.theme)}</h3>
     <p>1日〜${esc(m.boundary.day)}日${esc(m.boundary.hour)}時ごろ：「${esc(m.before.theme)}」<br>${esc(m.boundary.day)}日${esc(m.boundary.hour)}時ごろ〜${esc(m.last)}日：「${esc(m.theme)}」（日本時間）</p>
-    <p>試すヒント：${esc(m.action)}</p><p>通年の背景：${esc(m.year.theme)}</p></section>`).join("");
+    <p>${esc(m.description || "")}</p><p>おすすめの過ごし方：${esc(m.action)}</p><p>1年を通して大切にしたいこと：${esc(m.year.theme)}</p></section>`).join("");
   const birth = withBirth && input ? `<section class="print-block"><h2>入力情報</h2>
     ${input.nick ? `<p>呼び名：${esc(input.nick)}</p>` : ""}<p>生年月日：${esc(input.y)}年${esc(input.m)}月${esc(input.d)}日<br>出生地：${placeText(input)}<br>時刻：${esc(timeText(input))}</p>
     <p>命式（年・月・日・時）：${(r.candidates || []).map(esc).join("／")}</p></section>` : "";
-  return `<h1>命紋診断・鑑定結果</h1><p>${esc(r.period?.label || "生まれた日が分かれるため、12か月の読みは保留")}</p>
+  return `<h1>命紋診断・鑑定結果</h1><p>${esc(r.period?.label || "生まれた日が分かれるため、12か月のアドバイスは保留")}</p>
     <p class="print-note">${esc(R.DISCLAIMER)}</p>
-    <section><h2>本質のまとめ</h2>${r.summary ? three(r.summary) : `<p>出生情報の幅によって読みが分かれています。</p>${(r.uniq || []).map((s, i) => `<section class="print-block"><h3>候補${i + 1}</h3>${three(s)}</section>`).join("")}`}</section>
+    <section><h2>あなたの性格</h2>${r.summary ? three(r.summary) : `<p>出生情報の幅によって読みが分かれています。</p>${(r.uniq || []).map((s, i) => `<section class="print-block"><h3>候補${i + 1}</h3>${three(s)}</section>`).join("")}`}</section>
     <section class="print-block"><h2>今回の相談</h2><p>${esc(r.consult)}</p>${r.headline ? `<h3>${esc(r.headline)}</h3><p>${esc(r.answer)}</p>` : ""}<p>相談内容は、本質の計算には使っていません。</p></section>
-    ${sections("組み合わせの読み", r.combos)}${sections("基本の読み", r.basics)}${sections("条件付きの候補", r.conditional)}
-    ${months ? `<section><h2>12か月の読み</h2><p>月の読みは振り返りのテーマです。出来事の予測ではありません。</p>${months}</section>` : ""}
-    <section><h2>一致の記録</h2><p>結果全体：${esc(R.FIT[state.feeling] || "未回答")}</p>${fitRows || "<p>個別の記録はありません。</p>"}</section>
-    <section><h2>一歩と振り返りの記録</h2>${reflections || "<p>記録はありません。</p>"}</section>
+    ${sections("特徴の組み合わせ", r.combos)}${sections("性格の特徴", r.basics)}${sections("条件付きの候補", r.conditional)}
+    ${months ? `<section><h2>12か月のアドバイス</h2><p>月ごとのアドバイスです。出来事を予測したものではありません。</p>${months}</section>` : ""}
     ${birth}<section class="print-block"><h2>計算と読みの条件</h2><p>${esc(R.LIMITED)}</p><p>年の境目は立春、月の境目は節入り、日付の境目は現地0時です。真太陽時の補正はしません。</p>
     <p>版：${esc(r.versions.calc)}／${esc(r.versions.rules)}／${esc(r.versions.app)}</p></section>`;
 }
@@ -588,9 +467,9 @@ function sHow() {
     bar: bar("plain", { label: "この診断について" }),
     html: `<div class="stack prose">
   <h1 class="h1" tabindex="-1">命紋診断について</h1>
-  <p>命紋診断は、四柱推命の一部を使う占いです。生まれた日の干と、年・月・時の干の関係を手がかりに、得意な動き、力が出やすい環境、負担になりやすい条件と、これから12か月のテーマを読みます。</p>
+  <p>命紋診断は、四柱推命の一部を使う占いです。生まれた日の干と、年・月・時の干の関係を手がかりに、性格の特徴、あなたに合う環境、苦手になりやすいことと、これから12か月のテーマを読みます。</p>
   <p class="quiet">${R.DISCLAIMER}</p>
-  <section class="stack-s"><h2 class="h2">選べる悩み</h2><p>仕事、恋愛・パートナー、家族・人間関係、お金・暮らし、自分自身の5つです。同じ出生情報なら、本質の判定は共通。選んだ悩みに合わせて、振り返る視点と毎月のヒントを変えます。</p><p>相手の気持ちや結婚の時期、収入の増減を判定する機能ではありません。</p></section>
+  <section class="stack-s"><h2 class="h2">選べる悩み</h2><p>仕事、恋愛・パートナー、家族・人間関係、お金・暮らし、自分自身の5つです。同じ出生情報なら、本質の判定は共通。選んだ悩みに合わせて、悩みへのアドバイスと月ごとの過ごし方を変えます。</p><p>相手の気持ちや結婚の時期、収入の増減を判定する機能ではありません。</p></section>
   <section class="stack-s"><h2 class="h2">三つの種類を分けて書きます</h2>
     <p>${kind("read")}　生まれた日時から計算した干支を、命紋の規則に沿って読んだものです。</p>
     <p>${kind("told")}　相談として、あなたが選んだ内容です。占いで当てたものではありません。</p>
@@ -619,7 +498,7 @@ function sType(id) {
     <h1 class="display cover-title" id="h" tabindex="-1">${x.move}</h1>
   </section>
   <section class="card stack-s">${kind("read")}${x.detail ? `<p>${x.detail}</p>` : ""}${threeLines(x, "", false)}</section>
-  <p>これは命紋診断の読みの一つです。生年月日から、あなたの命紋と、これから12か月の読みを無料で出せます。</p>
+  <p>これは命紋診断の読みの一つです。生年月日から、あなたの命紋と、これから12か月のアドバイスを無料で出せます。</p>
   <a class="btn" href="#/focus">自分の命紋を診断する</a>
   <p class="note">${R.DISCLAIMER}</p>
 </div>`,
@@ -657,7 +536,7 @@ async function makeCard(r) {
     ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() ** 3 * 2.4 + 0.5, 0, Math.PI * 2); ctx.fill();
   }
   const serif = '"Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif', sans = '"Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif';
-  const all = `命紋診断私の命紋は「」${s.move}${s.env}${s.burden}力が出やすい環境負担になりやすい条件#生年月日から、あなたの動き方を読む占い${location.host}`;
+  const all = `命紋診断私の命紋は「」${s.move}${s.env}${s.burden}あなたに合う環境苦手になりやすいこと#生年月日から、あなたの性格を読む占い${location.host}`;
   try { await Promise.all([document.fonts.load(`600 72px "Noto Serif JP"`, all), document.fonts.load(`600 36px "Noto Sans JP"`, all), document.fonts.load(`400 26px "Noto Sans JP"`, all)]); } catch { /* 端末の書体で描く */ }
   const cx = 160, cy = 180;
   glow(cx, cy, 190, "rgba(240,217,155,.35)");
@@ -675,7 +554,7 @@ async function makeCard(r) {
   for (const line of wrapText(ctx, `「${s.move}」`, W - 170)) { ctx.fillText(line, 80, y); y += 106; }
   ctx.shadowBlur = 0;
   y += 36;
-  for (const [label, text] of [["力が出やすい環境", s.env], ["負担になりやすい条件", s.burden]]) {
+  for (const [label, text] of [["あなたに合う環境", s.env], ["苦手になりやすいこと", s.burden]]) {
     const top = y;
     ctx.fillStyle = "#d9b56a"; ctx.font = `600 28px ${sans}`; ctx.fillText(label, 108, y); y += 50;
     ctx.fillStyle = "#ede8dc"; ctx.font = `600 38px ${sans}`;
@@ -686,7 +565,7 @@ async function makeCard(r) {
   ctx.fillStyle = "rgba(217,181,106,.35)"; ctx.fillRect(80, H - 190, W - 160, 1);
   ctx.fillStyle = "#ede8dc"; ctx.font = `600 36px ${serif}`; ctx.fillText("#命紋診断", 80, H - 160);
   ctx.fillStyle = "#aab4cd"; ctx.font = `400 26px ${sans}`;
-  ctx.fillText("生年月日から、あなたの動き方を読む占い", 80, H - 104);
+  ctx.fillText("生年月日から、あなたの性格を読む占い", 80, H - 104);
   ctx.fillText(location.host + location.pathname.replace(/index\.html$/, ""), 80, H - 64);
   return cv;
 }
@@ -709,7 +588,7 @@ async function shareCard() {
 // ── ルーター ──
 function redirect(hash) { queueMicrotask(() => { location.replace(hash); }); return { bar: "", html: "" }; }
 const ROUTES = { "": sHome, sample: sSample, focus: sFocus, birth: sBirth, r: sResult, "r/essence": sEssence, "r/year": sYear, "r/now": sNow, "r/settings": sSettings, how: sHow };
-const TITLES = { sample: "結果の見本", focus: "質問 1", birth: "質問 2", r: "診断結果", "r/essence": "本質", "r/year": "12か月", "r/now": "今月の一歩", "r/settings": "計算条件と保存", how: "この診断について" };
+const TITLES = { sample: "結果の見本", focus: "質問 1", birth: "質問 2", r: "診断結果", "r/essence": "性格", "r/year": "12か月", "r/now": "今月の結果", "r/settings": "計算条件と保存", how: "この診断について" };
 
 function render() {
   clearPrintReading();
@@ -720,7 +599,7 @@ function render() {
   main.innerHTML = view.html;
   const showNav = "nav" in view && S.reading && S.reading.split !== "day";
   document.body.classList.toggle("has-resultnav", Boolean(showNav));
-  resultnav.innerHTML = showNav ? [["sum", "#/r", "結果"], ["ess", "#/r/essence", "本質"], ["year", "#/r/year", "12か月"], ["now", "#/r/now", "今月"]]
+  resultnav.innerHTML = showNav ? [["sum", "#/r", "結果"], ["ess", "#/r/essence", "性格"], ["year", "#/r/year", "12か月"], ["now", "#/r/now", "今月"]]
     .map(([k, h, l]) => `<a href="${h}" ${view.nav === k ? 'aria-current="page"' : ""}>${l}</a>`).join("") : "";
   const title = mo ? "月の詳細" : ty ? "シェアされた命紋" : TITLES[path];
   document.title = title ? `${title}｜命紋診断` : "命紋診断";
@@ -744,8 +623,6 @@ function bindDynamic() {
     if (y) { main.querySelector("#by").value = Number(y); main.querySelector("#bm").value = Number(mo); main.querySelector("#bd").value = Number(d); }
   });
   on("form[data-form=birth]", "input", (e) => { S.draft = readBirth(e.currentTarget); save(); });
-  on("input[name=feeling]", "change", (e) => { S.feeling = e.target.value; save(); main.querySelector("#offhelp").hidden = !["no", "part"].includes(S.feeling); toast("回答を記録しました"); });
-  on("input[name=choice]", "change", (e) => { main.querySelector("#w-custom").hidden = e.target.value !== "custom"; });
 }
 
 function showErrors(errs) {
@@ -797,17 +674,7 @@ document.addEventListener("submit", (e) => {
     catch { status.textContent = "計算できませんでした。入力を確かめて、もう一度お試しください。入力は残っています。"; return; }
     S.fresh = true; save(); location.hash = "#/r";
   }
-  if (kindOf === "fit") {
-    const f = new FormData(form);
-    if (!f.get("fit")) { toast("当てはまるかを一つ選んでください"); return; }
-    S.fits = { ...(S.fits || {}), [form.dataset.id]: { fit: f.get("fit"), example: String(f.get("example") || "").trim(), at: new Date().toISOString() } };
-    save(); toast("記録しました。結果の本文は変わりません");
-  }
-  if (kindOf === "reflect") {
-    const f = new FormData(form);
-    S.reflections[form.dataset.key] = { choice: f.get("choice"), custom: String(f.get("custom") || ""), did: f.get("did"), memo: String(f.get("memo") || "") };
-    save(); toast("振り返りを保存しました");
-  }
+
 });
 
 // ── 押す操作 ──
@@ -820,7 +687,6 @@ document.addEventListener("click", async (e) => {
   const act = a.dataset.act;
   if (act === "back") { if (history.length > 1) history.back(); else location.hash = "#/"; }
   if (act === "grid") { S.gridView = !S.gridView; save(); render(); }
-  if (act === "adopt") { const k = a.dataset.key; S.reflections[k] = { ...(S.reflections[k] || {}), choice: "adopt" }; save(); a.textContent = "この月の一歩にしました"; toast("一歩として記録しました"); }
   if (act === "card") shareCard();
   if (act === "share") {
     try { await navigator.share({ title: "命紋診断", text: shareText(S.reading), url: shareUrl(S.reading) }); }
@@ -875,4 +741,5 @@ window.addEventListener("resize", () => { clearTimeout(skyTimer); skyTimer = set
 drawSky();
 
 window.addEventListener("hashchange", render);
+if (S.reading) { S.reading = refreshReadingCopy(S.reading); save(); }
 render();

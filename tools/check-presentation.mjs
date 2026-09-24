@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {refreshReadingCopy} from '../presentation.js';
+const r={createdAt:'2026-08-01T00:00:00.000Z',versions:{rules:'old',calc:'calc-0.2'},focus:'fit',period:{label:'2026年8月〜2027年7月'},summary:{source:'T06',move:'OLD',env:'OLD',burden:'OLD',stars:['正財']},uniq:[],basics:[{id:'T06',star:'正財',move:'OLD'}],combos:[],conditional:[],candidates:['保存した命式'],yearTheme:'OLD',years:[{star:'正官',theme:'OLD',pillar:'丙午'}],months:[{key:'2026-08',star:'正財',theme:'OLD',pillar:'保存した月柱',boundary:{day:7,hour:21},before:{star:'正官',theme:'OLD'},year:{star:'正官',theme:'OLD'}}]};
+const before=JSON.stringify(r);const changed=refreshReadingCopy(r);
+assert.equal(JSON.stringify(r),before,'元の結果を破壊しない');
+assert.deepEqual(changed.period,r.period);assert.equal(changed.createdAt,r.createdAt);assert.deepEqual(changed.candidates,r.candidates);
+assert.equal(changed.summary.source,'T06');assert.equal(changed.months[0].pillar,r.months[0].pillar);assert.deepEqual(changed.months[0].boundary,r.months[0].boundary);
+assert.ok(!JSON.stringify(changed).includes('OLD'));assert.ok(changed.months[0].description);
+assert.equal(refreshReadingCopy(changed),changed,'同じ版は再更新しない');
+const split=refreshReadingCopy({versions:{},focus:'love',split:'day',uniq:[{source:'T06',move:'OLD'}],summary:null});assert.equal(split.split,'day');assert.equal(split.months,undefined);assert.notEqual(split.uniq[0].move,'OLD');
+console.log(JSON.stringify({result:'ok',checks:'copy migration keeps calculation, dates, IDs and split results'}));

@@ -20,7 +20,7 @@ check(!r3.combos.some((c) => c.id === "C03") && r3.conditional.some((c) => c.id 
 // 日干自身が甲 → 自身との比較をT01の根拠に加えない（starsOf は日柱を数えない。年月時に比肩がなければT01は出ない）
 check(tenGod(0, 0) === "比肩" && !ids(readOne({ month: "食神", year: "偏財", hour: null }).basics).includes("T01"), "例4 日干自身を数えない");
 // 年運が印綬、月運が傷官 → 別表示（群が別）
-check(groupOf("印綬").theme === "学習と整理" && groupOf("傷官").theme === "制作と改善", "例5 年と月を別の群で表示");
+check(groupOf("印綬").id === "G5" && groupOf("傷官").id === "G2", "例5 年と月を別の群で表示");
 // 組み合わせの並び：第一候補（月の星）を含むものが先、最大2件
 const r6 = readOne({ month: "傷官", year: "劫財", hour: "正官" });
 check(ids(r6.combos) === "C02,C06", `並び順 ${ids(r6.combos)}`);
